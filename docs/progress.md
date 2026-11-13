@@ -66,3 +66,12 @@ Implement milestone 3: typed kk/ru catalogs and feature components, Supabase SSR
 6. Vercel is optional for Milestone 3 local/cloud development; it is required only for deployment validation later.
 
 - Verification rerun: lint, TypeScript, production build and all **9 browser tests passed** (desktop/tablet/mobile); no application source was changed in this verification task.
+
+### Confirmed GitHub results
+
+- Initial application commit: `104da6afa0dedf315a136b00a2b260a447d47485` (`feat: initialize Your City foundation and localized demo UI`).
+- `git push -u origin feat/milestones-1-2` succeeded; a separate `git ls-remote --heads origin` returned that exact commit for the remote branch. Application code is saved to GitHub.
+- `gh pr create --repo colorshy/your-sity --base main --head feat/milestones-1-2` failed: `POST https://api.github.com/graphql: Forbidden`. No PR was created. The remote currently has only the development branch and no `main` PR base.
+- To unblock API access, review the environment GitHub connection permissions (repository contents and pull-request write access) and allow `api.github.com` in restricted network settings. Retry `gh api repos/colorshy/your-sity` and PR creation after saving settings. Do not replace working Git authentication or paste tokens into chat. The observed response does not identify whether API policy or authorization caused the denial.
+- Establish the intended default/base-branch strategy for this initially empty repository before opening the initial-code PR; an unrelated README commit on main will not supply a common ancestor. No main branch, forced push, history rewrite or automatic merge was performed.
+- The subsequent documentation-only commit records these confirmed results; its final hash is reported in the task response and can be read with `git log -1`.
