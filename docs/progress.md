@@ -1,5 +1,7 @@
 # Progress — 2026-11-13
 
+Current direction: **Appwrite continuation**; see the latest section below and BACKEND_REQUIREMENTS.md. Earlier Supabase entries are historical.
+
 ## Milestone 1 — foundation implemented
 
 - Inspected the existing checkout: empty, no commits or remote branches; preserved Git configuration.
@@ -111,3 +113,44 @@ Save/apply the project-host network setting and secure environment variables. Ob
 - Candidate-file credential scan found no keys/tokens; only the blank .env.example is tracked. Actual public project configuration stays in ignored .env.local/environment settings.
 - Hosted migration verification, actual project login and hosted cross-user RLS checks: **not run / blocked**, not passed. No live user-generated data has been read or changed.
 - Code and docs are ready for review; Milestone 3 is not declared fully integrated until hosted acceptance checks pass. The commit/push result and final SHA are reported in the task response.
+
+## Milestone 3 — Appwrite continuation (2026-11-13)
+
+The latest user explicitly selected Appwrite and assigned live backend configuration to ChatGPT's separate connected integration. This supersedes the earlier Supabase plan. Work continues on `feat/milestone-3-appwrite` from `697afb9eaec64d839b4f7679dee2a229035b887f`, preserving the existing SSR feature pages/design and all prior branches.
+
+### Implemented application work
+
+- Replaced Supabase runtime clients/dependencies with node-appwrite 31.2.0. Public defaults reuse Frankfurt endpoint, project your-city, database your_city_db and the exact existing Shymkent/community IDs. Historical SQL was archived under docs/legacy-supabase, never executed against Appwrite.
+- Added Appwrite signup/login/logout, HttpOnly persistent sessions, Account.get identity validation on protected pages/actions and email verification support. Session secrets/passwords/API keys never go into app tables or client props. Profile initialization reuses existing user_id rows and is idempotent.
+- Persisted transactional onboarding (name/city/communities/language), profile settings and localized cookie preference. Discovery/search, join/leave/rejoin, profile joined-community display, city vs joined feed and basic content pagination use Appwrite SDK operations.
+- Added post/comment create/edit/redacting-soft-delete, visible moderation status behavior, reports and a server-provisioned moderator hide/dismiss queue. The server derives identity/status, validates text/IDs, enforces city+membership and ownership, and never accepts an editable user role as authority.
+- Metadata/schema checks fail closed for unsafe direct-client table permissions, incompatible columns or missing unique profile/membership indexes. Transactions do not silently downgrade to unprotected writes. Existing rows with noncanonical profile/membership IDs are reused, not duplicated.
+- Added precise BACKEND_REQUIREMENTS.md for ChatGPT: exact existing-resource operations, permission model, columns/aliases/capacity/enums, indexes, SDK scope operations, transaction support and live negative acceptance tests. The optional appwrite:inspect helper is read-only; there is no schema/table creation or permission mutation script in this branch.
+- Node minimum is now >=22.19 due to current Undici; .nvmrc pins the validated 24.22.1. SDK transport respects inherited proxy/trust settings. No TLS/security bypass was used.
+
+### Verification boundary and coordination
+
+At first inspection this Codex session had no Appwrite MCP tools, no APPWRITE environment variables or server API key. One public metadata probe was blocked at proxy CONNECT (403), before project authorization could be tested. The user then explicitly confirmed that ChatGPT had verified/provisioned the backend elsewhere and instructed Codex to stop API retries/admin requests. No more live Appwrite probes or resource changes were performed. No live schema, table permissions, existing record data, account creation, or Appwrite authorization test is claimed by Codex.
+
+Local SDK/browser fixtures are isolated on loopback; fake users/content exist only inside that test process. Production routes never fall back to demo/mock data. Actual backend compatibility and real project acceptance are ChatGPT's coordinated follow-up using BACKEND_REQUIREMENTS.md, not manual founder administration.
+
+### Tests and fixes
+
+- Dependency installation and a fresh lockfile update completed. No real secrets are included in repository candidates; .env.local remains ignored and preserved.
+- Security/domain tests cover ownership, memberships, city boundaries, profile privacy, moderated content, reports/moderator trust, duplicate prevention, transactional rollback, schema/type/permission rejection and reuse of preexisting row IDs.
+- Browser tests cover signup/onboarding/membership, login/reload/logout, localized UI, guards, demo isolation and full post/comment CRUD at desktop/tablet/mobile sizes.
+- Initial iterations found an ambiguous test locator (text also existed in a hidden edit textarea), premature reload before membership mutation completed, and a loopback fixture parser that did not handle the SDK's indexed query-string serialization. Fixed selectors/waits and SDK-contract fixture parsing; no live API was retried to resolve these local failures.
+- Final command results and GitHub publication status are recorded below after completion. Passing local tests is not live Appwrite integration or deployment success.
+
+### Exact next coordinated task
+
+ChatGPT should inspect/reconcile the actual backend against BACKEND_REQUIREMENTS.md, provision the scoped server configuration through secure settings, and execute the listed two-user live acceptance/negative tests. Return any actual schema differences for adapter reconciliation. Once live acceptance is verified, prepare a deployment preview with canonical host/cookie/email settings and abuse controls; extend pagination beyond initial community/membership bounds only as needed. Existing Codex environment publication is independent and is not a development gate.
+
+### Final Appwrite local results
+
+- `npm ci --cache /workspace/.npm-cache --no-audit --no-fund`: clean locked dependency installation passed.
+- `npm run lint`: passed with zero warnings/errors. `npm run typecheck`: passed. `npm run build`: passed, Appwrite application routes compiled.
+- `npm run test:security`: **22 passed, 0 failed** (local domain/schema/SDK-transaction checks).
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test`: **24 passed, 0 failed** across desktop, tablet and mobile, against the isolated Appwrite SDK fixture. No live Appwrite acceptance result is implied.
+- No live Appwrite database/table/column/index/permission or row was created/modified by Codex. No deployment was triggered. The connected ChatGPT backend operator owns the precise follow-up in BACKEND_REQUIREMENTS.md.
+- GitHub commit/push and any PR attempt are reported in the final task response. Existing main, milestone-1/2 and Supabase feature branches are preserved. Secrets remain outside Git.

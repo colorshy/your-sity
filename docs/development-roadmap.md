@@ -8,3 +8,7 @@
 6. Full integration/accessibility checks, staging Vercel deployment, production configuration and verified GitHub workflow.
 
 Current scope ends at 2. No payment, direct messaging, advanced maps, native mobile, ads, or complex recommendations.
+
+## Appwrite continuation
+
+The current user explicitly selected Appwrite and assigned live backend administration to ChatGPT's separate integration. This supersedes the previous Supabase implementation roadmap. Active work is on feat/milestone-3-appwrite: Auth, onboarding, communities/memberships, content CRUD, feed and moderation foundation. Next acceptance milestone is schema/permission reconciliation and live two-user verification using BACKEND_REQUIREMENTS.md, then deployment/abuse controls and cursor pagination for larger datasets. No return to Supabase is planned.

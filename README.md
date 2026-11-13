@@ -1,28 +1,33 @@
-# Your City
+# Your City — Appwrite application
 
-Shymkent city communities using Next.js App Router, TypeScript, Tailwind and Supabase SSR.
-Milestone 3 code is implemented; hosted Supabase migration/application verification remains blocked by network and migration access. See docs/progress.md for exact evidence.
+Next.js, TypeScript and Tailwind community application for Shymkent, with Kazakh/Russian UI. This feature branch reuses the existing app and implements Appwrite Auth, onboarding, membership, feed, post/comment CRUD, reporting and a moderator queue.
 
-## Development
+**Verification boundary:** the founder reports that ChatGPT provisioned the real Appwrite backend in its separately connected integration. Codex has no Appwrite MCP/session key here and does not claim that the actual schema/permissions match the app yet. Local tests use an SDK-compatible loopback fixture. Coordinate live compatibility through [BACKEND_REQUIREMENTS.md](BACKEND_REQUIREMENTS.md); do not recreate resources.
 
-Node 22+ (validated 24.22.1), npm 11:
+## Runtime
+
+Node >=22.19 (validated/pinned in .nvmrc: 24.22.1), npm 11.
 
 ```sh
 npm ci --cache /workspace/.npm-cache
-cp .env.example .env.local
-# Fill public URL/publishable key and your canonical application origin securely.
 npm run dev
 ```
 
-Real routes: `/sign-up`, `/sign-in`, `/onboarding`, `/communities`, `/communities/<uuid>`, `/feed`, `/profile`. Unauthenticated users are redirected to sign-in; onboarded residents access their selected city's data. Missing configuration displays a service-unavailable screen. `/demo` and `/demo?page=communities` are explicitly fictional, isolated demos. Live pages never fall back to fixture posts. Posting/comment/report UI is a later milestone; table policies already enforce access.
+Configure the variables in `.env.example` through secure environment settings or merge them into ignored `.env.local` without overwriting existing local configuration. APPWRITE_API_KEY is **server-only** and never NEXT_PUBLIC. No passwords or session secrets are stored in application tables. No Supabase dependency/fallback remains in the runtime; old experimental SQL is archived in docs/legacy-supabase and must not be applied to Appwrite.
 
-## Supabase setup
+Fixed defaults: endpoint https://fra.cloud.appwrite.io/v1, project your-city, database your_city_db. The existing shymkent and seven community IDs are reused exactly. The coordinated backend operator provisions application secrets, Web platform/verification hostname, column/index compatibility and permissions; no founder table/ID copying is required.
 
-1. Enable network access to your exact project hostname. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL` in environment settings; local `.env.local` is ignored. No service-role key is needed by the app.
-2. Use authorized SQL/CLI access to inspect `supabase/preflight.sql` results and existing migration history. Do not run migrations against unknown/conflicting tables. See [database](docs/database.md).
-3. Apply `supabase/migrations/202611130001_foundation.sql` once through reviewed migration tooling. The transaction fails on conflicting objects rather than deleting/replacing existing tables.
-4. Enable email/password Auth and email confirmation. Set Auth Site URL to your canonical application origin and allow its `/auth/callback` URL. PKCE callback exchanges the code and stores cookies; it must open in the browser that initiated signup. For token-hash confirmation templates, use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` (supports a different browser). Configure email delivery limits/SMTP as appropriate.
-5. Verify signup, actual email delivery, confirmation, login, reload, onboarding, membership and logout against a disposable authorized test account. Local fixture tests do not establish hosted integration success.
+## Application
+
+- `/sign-up`, `/sign-in`: email/password Auth; HttpOnly persistent session; `/profile`: logout and email verification request.
+- `/onboarding`: name, kk/ru preference, Shymkent and selected communities saved transactionally.
+- `/communities`: city discovery/search; join/leave; `/communities/<id>`: paginated community feed.
+- `/feed`: joined-community or broader city posts, newest-first and paginated.
+- `/create`, `/posts/<id>`: create/edit/soft-delete own posts and comments; report a post.
+- `/moderation`: trusted moderator report queue and hide/dismiss decisions. IDs come only from server configuration.
+- `/demo`: explicitly fictional isolated UI demonstration; never a fallback for missing/failed backend data.
+
+Server actions independently verify identity, bound input and ownership/membership/city. Appwrite data writes are server-only; a metadata gate rejects unsafe table policies and incompatible schema. Existing private profiles are not exposed: author lists contain display name/ID only. Empty/loading/error states and pending forms are provided. Language is retained in profile and cookie. City changes after onboarding require a separate administrative workflow. Content deletion redacts the body and marks deleted; records are retained for moderation consistency.
 
 ## Validation
 
@@ -30,10 +35,12 @@ Real routes: `/sign-up`, `/sign-in`, `/onboarding`, `/communities`, `/communitie
 npm run lint
 npm run typecheck
 npm run build
-npm run test:db
+npm run test:security
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test
 ```
 
-Stop only a development server you started before running browser tests: Next.js allows one dev process per checkout. Tests launch a loopback Auth/REST fixture on 54321 and Next on 3100, overriding actual project variables. Browser tests verify SSR flows against the **fixture**, not the real project. Database tests execute migration SQL and RLS in embedded PostgreSQL (PGlite), with a minimal Auth schema/role shim. Hosted migration verification and real multi-user tests are separate requirements. On another machine install Chromium with `npx playwright install chromium` or set an installed Chromium path.
+Browser tests start only a loopback Appwrite fixture on 54321 and Next on 3100; all real project settings are overridden. A single worker avoids fixture transaction interference. They test session persistence, onboarding, membership and content CRUD on desktop/tablet/mobile. Security tests use an in-memory repository and SDK transaction stub: negative ownership/city/member checks, schema/permission rejection and moderator trust. They **do not** validate actual Appwrite permission enforcement.
 
-See [architecture](docs/architecture.md), [database](docs/database.md), [progress](docs/progress.md), and [deployment](docs/deployment.md). No cloud publication or Vercel deployment is implied by passing tests.
+Stop only a dev server you started before browser tests; Next allows one dev server per checkout. Elsewhere install Playwright Chromium or use a verified installed browser path. `npm run appwrite:inspect` is read-only and optional for an authorized backend operator; it is not part of installation and is not repeatedly retried in this MCP-less session.
+
+See docs/architecture.md, docs/database.md, docs/progress.md and BACKEND_REQUIREMENTS.md. Passing tests/pushing Git is not a production deployment or Codex environment publication.
