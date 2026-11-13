@@ -152,20 +152,21 @@ test("search, category filters, sorting and memberships work without authenticat
   await page.getByRole("textbox", { name: "Поиск публикаций" }).fill("книги");
   await expect(page.locator(".post")).toHaveCount(2);
   await page.getByRole("button", { name: "Очистить поиск" }).click();
+  await page.getByRole("button", { name: "Город", exact: true }).click();
   await page
     .locator(".mvp-filters")
-    .getByRole("button", { name: /Автолюбители/ })
+    .getByRole("button", { name: "Новости", exact: true })
     .click();
   await expect(page.locator(".post")).toHaveCount(1);
+  await expect(page.locator(".post")).toContainText(
+    "За что вы любите Шымкент?",
+  );
   await page
     .locator(".mvp-filters")
     .getByRole("button", { name: "Все", exact: true })
     .click();
-  await page
-    .getByRole("combobox", { name: "Сортировка" })
-    .selectOption("popular");
   await expect(page.locator(".post").first()).toContainText(
-    "За что вы любите Шымкент?",
+    "Город, в который влюбляешься заново",
   );
   await page
     .getByRole("textbox", { name: "Поиск публикаций" })
@@ -211,7 +212,13 @@ test("compact phone layouts and denied local storage remain usable", async ({
   await page.goto("/");
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("только в этом сеансе");
+  await page
+    .getByRole("status")
+    .getByRole("button", { name: "Закрыть", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveCount(0);
   await page.getByRole("button", { name: "Переключить тему" }).click();
+  await expect(page.getByRole("status")).toContainText("только в этом сеансе");
   await expect(page.locator(".mvp")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({ path: "/tmp/your-city-mvp-compact-dark.png" });
   for (const target of ["communities", "profile", "create", "post&id=books"]) {

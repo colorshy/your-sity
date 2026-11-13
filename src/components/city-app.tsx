@@ -10,26 +10,32 @@ import {
   Compass,
   Home,
   Plus,
-  MessageCircle,
   Search,
   User,
   Leaf,
-  Heart,
   Bookmark,
-  Share2,
   Sun,
   Moon,
   ChevronRight,
   Check,
   ArrowLeft,
-  Send,
   X,
-  Pencil,
   Sparkles,
   CalendarDays,
-  SlidersHorizontal,
+  Bell,
 } from "lucide-react";
 import { communities, posts, type DemoPost } from "@/lib/demo";
+import { activeCity, contentTypes } from "@/lib/city-data";
+import {
+  activity,
+  authorId,
+  isHidden,
+  localNotice,
+  visiblePosts,
+} from "@/lib/social-demo";
+import { SocialPost } from "./social/post-card";
+import { SocialProfile } from "./social/profile";
+import { Notifications } from "./social/notifications";
 import { useDemoState } from "@/lib/demo-store";
 const subscribeHydration = () => () => {};
 const href = (page: string, id?: string) =>
@@ -47,14 +53,15 @@ export function CityApp({
     () => true,
     () => false,
   );
-  const [state, update] = useDemoState();
+  const [state, update, storageAvailable] = useDemoState();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState("explore");
   const [category, setCategory] = useState("all");
   const [toast, setToast] = useState("");
   const [storageWarning, setStorageWarning] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [sort, setSort] = useState("recent");
+  const [dismissedStorageWarning, setDismissedStorageWarning] = useState(false);
+  const [profileTab, setProfileTab] = useState("posts");
+  const [neighborhood, setNeighborhood] = useState("");
   const t = (kk: string, ru: string) => (state.lang === "kk" ? kk : ru);
   const name = (c: (typeof communities)[number]) => c[state.lang];
   const allPosts = [...state.posts, ...posts];
@@ -69,23 +76,44 @@ export function CityApp({
     return () => clearTimeout(timer);
   }, [toast]);
   const notification =
-    toast ||
-    (storageWarning
+    (storageWarning || !storageAvailable) && !dismissedStorageWarning
       ? t(
           "Браузер сақтауын бұғаттады. Өзгерістер осы сеанста ғана сақталады.",
           "Браузер заблокировал хранение. Изменения доступны только в этом сеансе.",
         )
-      : "");
+      : toast;
   function mutate(change: Parameters<typeof update>[0]) {
-    if (!update(change)) setStorageWarning(true);
+    if (!update(change)) {
+      setStorageWarning(true);
+      setDismissedStorageWarning(false);
+    }
   }
   function toggle(field: "joined" | "likes" | "saved", value: string) {
-    mutate((s) => ({
-      ...s,
-      [field]: s[field].includes(value)
-        ? s[field].filter((x) => x !== value)
-        : [...s[field], value],
-    }));
+    mutate((s) => {
+      const next = {
+        ...s,
+        [field]: s[field].includes(value)
+          ? s[field].filter((x) => x !== value)
+          : [...s[field], value],
+      };
+      return field === "joined"
+        ? activity(
+            next,
+            localNotice(
+              "community",
+              href("community", value),
+              communities.find((c) => c.id === value)?.[s.lang] || value,
+            ),
+          )
+        : next;
+    });
+    if (field === "joined")
+      setToast(
+        t(
+          "Мүшелік тек осы браузерде өзгертілді",
+          "Участие изменено только в этом браузере",
+        ),
+      );
   }
   function joinButton(c: (typeof communities)[number]) {
     const joined = state.joined.includes(c.id);
@@ -102,230 +130,44 @@ export function CityApp({
       </button>
     );
   }
-  const shown = allPosts
-    .filter(
-      (p) =>
-        (page !== "community" || p.community === id) &&
-        (page !== "profile" || p.own) &&
-        (page !== "saved" || state.saved.includes(p.id)) &&
-        (mode !== "mine" || state.joined.includes(p.community)) &&
-        (category === "all" || p.community === category) &&
-        `${p.titleRu} ${p.titleKk} ${p.bodyRu} ${p.bodyKk}`
-          .toLocaleLowerCase()
-          .includes(query.trim().toLocaleLowerCase()),
-    )
-    .sort((a, b) =>
-      sort === "popular"
-        ? b.likes +
-          Number(state.likes.includes(b.id)) -
-          (a.likes + Number(state.likes.includes(a.id)))
-        : 0,
-    );
+  const profileId = id || "me";
+  const profileReplies = state.comments.filter(
+    (c) =>
+      c.authorId === profileId &&
+      !c.deleted &&
+      c.text.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
+      allPosts.some((p) => p.id === c.post && !isHidden(state, authorId(p))),
+  );
+  const pool = allPosts.filter(
+    (p) =>
+      (page !== "community" || p.community === id) &&
+      (page !== "saved" || state.saved.includes(p.id)) &&
+      (page !== "profile" ||
+        (profileTab === "likes"
+          ? profileId === "me" && state.likes.includes(p.id)
+          : authorId(p) === profileId &&
+            (profileTab !== "media" || !!p.image))),
+  );
+  const shown = visiblePosts(state, pool, {
+    mode: page === "feed" ? mode : "city",
+    neighborhood: page === "feed" ? neighborhood : "",
+    kind: page === "feed" && mode === "city" ? category : "all",
+    query,
+  });
+  const quoteSource = allPosts.find(
+    (p) => p.id === id && !isHidden(state, authorId(p)),
+  );
   function postCard(p: DemoPost, full = false) {
-    const c = communities.find((c) => c.id === p.community)!;
-    const commentCount =
-      state.comments.filter((c) => c.post === p.id).length + (p.own ? 0 : 1);
-    const title = state.lang === "kk" ? p.titleKk : p.titleRu;
     return (
-      <article className="mvp-post post" key={p.id}>
-        <header className="mvp-post-meta">
-          <span className={`mvp-avatar ${c.color}`}>
-            {p.own ? state.profile.avatar : p.initials}
-          </span>
-          <div>
-            <strong>
-              {p.own
-                ? state.profile.name
-                : state.lang === "kk"
-                  ? p.authorKk
-                  : p.authorRu}
-            </strong>
-            <p>
-              <Link href={href("community", p.community)}>
-                {c.icon} {name(c)}
-              </Link>
-              <span> · {p.time}</span>
-            </p>
-          </div>
-          <span className="mvp-demo-tag">{t("ҮЛГІ", "ДЕМО")}</span>
-        </header>
-        <Link href={href("post", p.id)} className="mvp-post-content">
-          <h2>{title}</h2>
-          <p>{state.lang === "kk" ? p.bodyKk : p.bodyRu}</p>
-        </Link>
-        {p.image && (
-          <Link href={href("post", p.id)} className="mvp-post-image">
-            <Image
-              src={p.image}
-              alt={t(
-                p.photo
-                  ? "Тау пейзажы — иллюстрациялық фото"
-                  : "Деможазбаға арналған иллюстрация",
-                p.photo
-                  ? "Горный пейзаж — иллюстративное фото"
-                  : "Иллюстрация к демопубликации",
-              )}
-              width={800}
-              height={400}
-              loading={full ? "eager" : "lazy"}
-              unoptimized={p.image.endsWith(".svg")}
-            />
-          </Link>
-        )}
-        <footer className="mvp-post-actions">
-          <button
-            aria-label={t("Ұнату", "Нравится")}
-            aria-pressed={state.likes.includes(p.id)}
-            className={state.likes.includes(p.id) ? "liked" : ""}
-            onClick={() => toggle("likes", p.id)}
-          >
-            <Heart
-              size={19}
-              fill={state.likes.includes(p.id) ? "currentColor" : "none"}
-            />
-            {p.likes + Number(state.likes.includes(p.id))}
-          </button>
-          <Link
-            aria-label={t("Пікірлер", "Комментарии")}
-            href={href("post", p.id)}
-          >
-            <MessageCircle size={19} />
-            {commentCount}
-          </Link>
-          <button
-            aria-label={t("Бөлісу", "Поделиться")}
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  `${location.origin}${href("post", p.id)}`,
-                );
-                setToast(
-                  t(
-                    "Деможазба сілтемесі көшірілді",
-                    "Ссылка на демопост скопирована",
-                  ),
-                );
-              } catch {
-                setToast(
-                  t(
-                    "Сілтемені жазба бетіндегі мекенжайдан көшіріңіз",
-                    "Скопируйте ссылку из адресной строки страницы поста",
-                  ),
-                );
-              }
-            }}
-          >
-            <Share2 size={18} />
-            <span>{t("Бөлісу", "Поделиться")}</span>
-          </button>
-          <button
-            className="mvp-save"
-            aria-label={t("Сақтау", "Сохранить")}
-            aria-pressed={state.saved.includes(p.id)}
-            onClick={() => toggle("saved", p.id)}
-          >
-            <Bookmark
-              size={19}
-              fill={state.saved.includes(p.id) ? "currentColor" : "none"}
-            />
-          </button>
-        </footer>
-        {full && (
-          <section className="mvp-comments">
-            <h3>
-              {t("Әңгімеге қосылыңыз", "Присоединяйтесь к разговору")}{" "}
-              <span>{commentCount}</span>
-            </h3>
-            {!p.own && (
-              <div className="mvp-comment">
-                <span className="mvp-avatar purple">М</span>
-                <div>
-                  <strong>
-                    {t("Мәдина · демопрофиль", "Мадина · демопрофиль")}
-                  </strong>
-                  <p>
-                    {t(
-                      "Керемет идея! Қаламызды бірге таниық 🌿",
-                      "Отличная идея! Давайте открывать наш город вместе 🌿",
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-            {state.comments
-              .filter((c) => c.post === p.id)
-              .map((c) => (
-                <div className="mvp-comment" key={c.id}>
-                  <span className="mvp-avatar green">
-                    {state.profile.avatar}
-                  </span>
-                  <div>
-                    <strong>
-                      {c.author} · {t("демо", "демо")}
-                    </strong>
-                    <p>{c.text}</p>
-                  </div>
-                  <button
-                    className="mvp-icon"
-                    aria-label={t("Пікірді жою", "Удалить комментарий")}
-                    onClick={() =>
-                      mutate((s) => ({
-                        ...s,
-                        comments: s.comments.filter((x) => x.id !== c.id),
-                      }))
-                    }
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const form = e.currentTarget;
-                const text = String(
-                  new FormData(form).get("comment") || "",
-                ).trim();
-                if (!text) return;
-                mutate((s) => ({
-                  ...s,
-                  comments: [
-                    ...s.comments,
-                    {
-                      id: crypto.randomUUID(),
-                      post: p.id,
-                      text,
-                      author: s.profile.name,
-                    },
-                  ],
-                }));
-                form.reset();
-                setToast(
-                  t(
-                    "Демопікір осы браузерде сақталды",
-                    "Демокомментарий сохранён в этом браузере",
-                  ),
-                );
-              }}
-            >
-              <label htmlFor="comment">
-                {t("Пікіріңіз", "Ваш комментарий")}
-              </label>
-              <textarea
-                id="comment"
-                name="comment"
-                required
-                maxLength={2000}
-                placeholder={t("Ойыңызбен бөлісіңіз…", "Поделитесь мыслями…")}
-              />
-              <button className="mvp-primary" type="submit">
-                <Send size={16} />
-                {t("Жіберу · демо", "Отправить · демо")}
-              </button>
-            </form>
-          </section>
-        )}
-      </article>
+      <SocialPost
+        key={p.id}
+        post={p}
+        full={full}
+        allPosts={allPosts}
+        state={state}
+        mutate={mutate}
+        feedback={setToast}
+      />
     );
   }
   const navItems = [
@@ -337,6 +179,11 @@ export function CityApp({
     },
     { page: "saved", icon: Bookmark, label: t("Сақталғандар", "Сохранённое") },
     { page: "profile", icon: User, label: t("Менің профилім", "Мой профиль") },
+    {
+      page: "notifications",
+      icon: Bell,
+      label: t("Хабарламалар", "Уведомления"),
+    },
   ];
   return (
     <div
@@ -415,6 +262,18 @@ export function CityApp({
             {t("Қалаңыздың үні", "Голос вашего города")}
           </span>
           <div className="mvp-top-actions">
+            <Link
+              className="mvp-icon social-notification-link"
+              aria-label={t("Хабарламалар", "Уведомления")}
+              href={href("notifications")}
+            >
+              <Bell size={19} />
+              {state.notifications.some((n) => !n.read) && (
+                <span aria-label={t("Оқылмағандар", "Непрочитанные")}>
+                  {state.notifications.filter((n) => !n.read).length}
+                </span>
+              )}
+            </Link>
             <div className="mvp-language">
               {(["kk", "ru"] as const).map((l) => (
                 <button
@@ -525,6 +384,8 @@ export function CityApp({
                 {t("Нақты аккаунт жасау", "Создать реальный аккаунт")}
               </Link>
             </section>
+          ) : page === "notifications" ? (
+            <Notifications state={state} mutate={mutate} feedback={setToast} />
           ) : page === "create" ? (
             <section className="mvp-editor">
               <Link className="mvp-back" href={href("feed")}>
@@ -541,15 +402,41 @@ export function CityApp({
                   "Демопубликация будет видна только в этом браузере.",
                 )}
               </p>
+              {quoteSource && (
+                <div className="social-quote">
+                  <small>{t("Дәйексөз · демо", "Цитата · демо")}</small>
+                  <strong>
+                    {state.lang === "kk"
+                      ? quoteSource.titleKk
+                      : quoteSource.titleRu}
+                  </strong>
+                  <Link href={href("create")}>
+                    {t("Дәйексөзді алып тастау", "Убрать цитату")}
+                  </Link>
+                </div>
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   const data = new FormData(e.currentTarget);
                   const title = String(data.get("title") || "").trim();
                   const body = String(data.get("body") || "").trim();
-                  if (!title || !body) return;
+                  if (!title || body.length < 3) {
+                    setToast(
+                      t(
+                        "Тақырып пен кемінде 3 таңбадан тұратын мәтін жазыңыз.",
+                        "Добавьте заголовок и текст не короче 3 символов.",
+                      ),
+                    );
+                    return;
+                  }
                   const post: DemoPost = {
                     id: crypto.randomUUID(),
+                    authorId: "me",
+                    createdAt: new Date().toISOString(),
+                    neighborhood: String(data.get("neighborhood") || ""),
+                    kind: String(data.get("kind")) as DemoPost["kind"],
+                    ...(quoteSource ? { quoteId: quoteSource.id } : {}),
                     community: String(data.get("community")),
                     authorRu: state.profile.name,
                     authorKk: state.profile.name,
@@ -573,7 +460,9 @@ export function CityApp({
                   {t("Қауымдастық", "Сообщество")}
                   <select
                     name="community"
-                    defaultValue={current?.id || "events"}
+                    defaultValue={
+                      quoteSource?.community || current?.id || "events"
+                    }
                   >
                     {communities.map((c) => (
                       <option value={c.id} key={c.id}>
@@ -582,6 +471,32 @@ export function CityApp({
                     ))}
                   </select>
                 </label>
+                <div className="social-editor-selects">
+                  <label>
+                    {t("Жазба түрі", "Тип публикации")}
+                    <select name="kind" defaultValue="discussion">
+                      {contentTypes.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k[state.lang]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    {t("Аудан (міндетті емес)", "Район (необязательно)")}
+                    <select
+                      name="neighborhood"
+                      defaultValue={state.profile.neighborhood}
+                    >
+                      <option value="">{t("Бүкіл қала", "Весь город")}</option>
+                      {activeCity.neighborhoods.map((n) => (
+                        <option key={n.id} value={n.id}>
+                          {n[state.lang]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
                 <label>
                   {t("Тақырып", "Заголовок")}
                   <input
@@ -681,10 +596,12 @@ export function CityApp({
                           ? name(current)
                           : t("Табылмады", "Не найдено")
                         : page === "profile"
-                          ? t("Менің кеңістігім", "Моё пространство")
+                          ? id && id !== "me"
+                            ? t("Профиль", "Профиль")
+                            : t("Менің кеңістігім", "Моё пространство")
                           : page === "saved"
                             ? t("Сақталғандар", "Сохранённое")
-                            : t("Бүгін қалада", "Сегодня в городе")}{" "}
+                            : t("Шымкенттің лентасы", "Лента Шымкента")}{" "}
                     <span className="mvp-spark">✳</span>
                   </h1>
                   {page === "communities" && (
@@ -734,8 +651,7 @@ export function CityApp({
                           </div>
                           <div className="mvp-community-body">
                             <span className="mvp-member-count">
-                              {c.members} ·{" "}
-                              {t("демоқатысушы", "демоучастников")}
+                              {t("Демоқауымдастық", "Демосообщество")}
                             </span>
                             <Link href={href("community", c.id)}>
                               <h2>{name(c)}</h2>
@@ -770,113 +686,14 @@ export function CityApp({
                     aria-label={t("Жазбалар", "Публикации")}
                   >
                     {page === "profile" && (
-                      <section className="mvp-profile">
-                        <div className="mvp-profile-cover">
-                          <span>SHYMKENT · YOUR CITY</span>
-                          <Leaf size={65} />
-                        </div>
-                        <div className="mvp-profile-info">
-                          <span className="mvp-profile-avatar">
-                            {state.profile.avatar}
-                          </span>
-                          <button
-                            className="mvp-secondary"
-                            onClick={() => setEditing(!editing)}
-                          >
-                            <Pencil size={15} />
-                            {editing
-                              ? t("Жабу", "Закрыть")
-                              : t("Өңдеу", "Редактировать")}
-                          </button>
-                          <h2>{state.profile.name}</h2>
-                          <p>
-                            <MapPin size={14} /> Шымкент ·{" "}
-                            {t("Демопрофиль", "Демопрофиль")}
-                          </p>
-                          <p>
-                            {state.profile.bio ||
-                              t(
-                                "Қаланы танимын, жақсы адамдарды іздеймін 🌿",
-                                "Открываю город и ищу хороших людей 🌿",
-                              )}
-                          </p>
-                          <div className="mvp-profile-stats">
-                            <span>
-                              <b>{state.posts.length}</b>
-                              {t("жазба", "публикаций")}
-                            </span>
-                            <span>
-                              <b>{state.joined.length}</b>
-                              {t("қауымдастық", "сообществ")}
-                            </span>
-                            <span>
-                              <b>{state.saved.length}</b>
-                              {t("сақталған", "сохранено")}
-                            </span>
-                          </div>
-                          {editing && (
-                            <form
-                              className="mvp-profile-form"
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                const d = new FormData(e.currentTarget);
-                                const name = String(d.get("name") || "").trim();
-                                if (!name) return;
-                                mutate((s) => ({
-                                  ...s,
-                                  profile: {
-                                    name,
-                                    bio: String(d.get("bio") || "").trim(),
-                                    avatar: String(d.get("avatar")),
-                                  },
-                                }));
-                                setEditing(false);
-                                setToast(
-                                  t(
-                                    "Демопрофиль сақталды",
-                                    "Демопрофиль сохранён",
-                                  ),
-                                );
-                              }}
-                            >
-                              <label>
-                                {t("Атыңыз", "Имя")}
-                                <input
-                                  name="name"
-                                  defaultValue={state.profile.name}
-                                  required
-                                  minLength={2}
-                                  maxLength={60}
-                                />
-                              </label>
-                              <label>
-                                {t("Өзіңіз туралы", "О себе")}
-                                <textarea
-                                  name="bio"
-                                  defaultValue={state.profile.bio}
-                                  maxLength={280}
-                                />
-                              </label>
-                              <label>
-                                {t("Аватар", "Аватар")}
-                                <select
-                                  name="avatar"
-                                  defaultValue={state.profile.avatar}
-                                >
-                                  {["🌿", "☀️", "🌻", "🌊", "🏔️", "☕"].map(
-                                    (a) => (
-                                      <option key={a}>{a}</option>
-                                    ),
-                                  )}
-                                </select>
-                              </label>
-                              <button type="submit" className="mvp-primary">
-                                {t("Сақтау · демо", "Сохранить · демо")}
-                              </button>
-                            </form>
-                          )}
-                        </div>
-                      </section>
+                      <SocialProfile
+                        id={id}
+                        tab={profileTab}
+                        onTab={setProfileTab}
+                        state={state}
+                        mutate={mutate}
+                        feedback={setToast}
+                      />
                     )}
                     {page === "community" && current && (
                       <section className="mvp-community-intro">
@@ -891,10 +708,7 @@ export function CityApp({
                             ? current.descKk
                             : current.descRu}
                         </p>
-                        <small>
-                          {current.members} ·{" "}
-                          {t("демоқатысушы", "демоучастников")}
-                        </small>
+                        <small>{t("Демоқауымдастық", "Демосообщество")}</small>
                         {joinButton(current)}
                       </section>
                     )}
@@ -913,11 +727,9 @@ export function CityApp({
                       {page === "feed" ? (
                         <div className="mvp-feed-tabs">
                           {[
-                            ["explore", t("Барлық жазбалар", "Все публикации")],
-                            [
-                              "mine",
-                              t("Менің қауымдастықтарым", "Мои сообщества"),
-                            ],
+                            ["explore", t("Сіз үшін", "Для тебя")],
+                            ["city", t("Қала", "Город")],
+                            ["mine", t("Қауымдастықтар", "Сообщества")],
                           ].map(([value, label]) => (
                             <button
                               key={value}
@@ -935,19 +747,6 @@ export function CityApp({
                           <small>{shown.length}</small>
                         </h2>
                       )}
-                      <label className="mvp-sort">
-                        <SlidersHorizontal size={15} />
-                        <select
-                          aria-label={t("Сұрыптау", "Сортировка")}
-                          value={sort}
-                          onChange={(e) => setSort(e.target.value)}
-                        >
-                          <option value="recent">{t("Жаңа", "Новые")}</option>
-                          <option value="popular">
-                            {t("Танымал", "Популярные")}
-                          </option>
-                        </select>
-                      </label>
                     </div>
                     <label className="mvp-search">
                       <Search size={19} />
@@ -971,90 +770,200 @@ export function CityApp({
                       )}
                     </label>
                     {page === "feed" && (
-                      <div
-                        className="mvp-filters"
-                        aria-label={t("Санаттар", "Категории")}
-                      >
-                        <button
-                          aria-pressed={category === "all"}
-                          onClick={() => setCategory("all")}
-                        >
-                          {t("Барлығы", "Все")}
-                        </button>
-                        {communities.map((c) => (
-                          <button
-                            key={c.id}
-                            aria-pressed={category === c.id}
-                            onClick={() => setCategory(c.id)}
-                          >
-                            {c.icon} {name(c)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {shown.map((p) => postCard(p))}
-                    {!shown.length && (
-                      <div className="mvp-empty">
-                        <Leaf size={35} />
-                        <h2>
-                          {query || category !== "all"
-                            ? t(
-                                "Әзірге ештеңе табылмады",
-                                "Пока ничего не найдено",
-                              )
-                            : page === "saved"
-                              ? t(
-                                  "Жақсы идеяларды сақтаңыз",
-                                  "Сохраняйте хорошие идеи",
-                                )
-                              : page === "profile"
-                                ? t(
-                                    "Бірінші әңгімеңізді бастаңыз",
-                                    "Начните свою первую историю",
-                                  )
-                                : t(
-                                    "Лентаңызды өзіңіз жасаңыз",
-                                    "Соберите свою ленту",
-                                  )}
-                        </h2>
-                        <p>
-                          {page === "saved"
-                            ? t(
-                                "Жазбаның астындағы бетбелгіні басыңыз — ол осында пайда болады.",
-                                "Нажмите на закладку под публикацией — она появится здесь.",
-                              )
-                            : t(
-                                "Қызығушылықтарыңызды табыңыз немесе қалаға өз ойыңызды айтыңыз.",
-                                "Найдите свои интересы или поделитесь с городом своей историей.",
+                      <>
+                        <div className="social-feed-options">
+                          <label>
+                            {t("Аудан", "Район")}
+                            <select
+                              aria-label={t(
+                                "Аудан бойынша сүзгі",
+                                "Фильтр по району",
                               )}
-                        </p>
-                        {query || category !== "all" ? (
-                          <button
-                            className="mvp-primary"
-                            onClick={() => {
-                              setQuery("");
-                              setCategory("all");
-                            }}
+                              value={neighborhood}
+                              onChange={(e) => setNeighborhood(e.target.value)}
+                            >
+                              <option value="">
+                                {t("Бүкіл Шымкент", "Весь Шымкент")}
+                              </option>
+                              {activeCity.neighborhoods.map((n) => (
+                                <option key={n.id} value={n.id}>
+                                  {n[state.lang]}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {mode === "mine" ? (
+                            <Link
+                              className="mvp-text-link"
+                              href={href("communities")}
+                            >
+                              {t("Қауымдастықтарды табу", "Найти сообщества")}
+                            </Link>
+                          ) : (
+                            <details className="social-feed-explainer">
+                              <summary>
+                                {mode === "explore"
+                                  ? t(
+                                      "Лента қалай құрылған?",
+                                      "Как устроена лента?",
+                                    )
+                                  : t("Осы лента туралы", "Об этой ленте")}
+                              </summary>
+                              <p>
+                                {mode === "explore"
+                                  ? t(
+                                      "Таңдалған қауымдастықтар, уақыт және осы браузердегі әрекеттер бойынша қарапайым реттеу.",
+                                      "Простой порядок по выбранным сообществам, времени и действиям в этом браузере.",
+                                    )
+                                  : t(
+                                      "Шымкенттің деможазбалары уақыт ретімен: жаңасы алдымен.",
+                                      "Демопубликации Шымкента по времени: новые сначала.",
+                                    )}
+                              </p>
+                            </details>
+                          )}
+                        </div>
+                        {mode === "city" && (
+                          <div
+                            className="mvp-filters"
+                            aria-label={t("Жазба түрлері", "Типы публикаций")}
                           >
-                            {t("Сүзгілерді тазарту", "Сбросить фильтры")}
-                          </button>
+                            <button
+                              aria-pressed={category === "all"}
+                              onClick={() => setCategory("all")}
+                            >
+                              {t("Барлығы", "Все")}
+                            </button>
+                            {contentTypes.map((k) => (
+                              <button
+                                key={k.id}
+                                aria-pressed={category === k.id}
+                                onClick={() => setCategory(k.id)}
+                              >
+                                {k[state.lang]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {page === "profile" && profileTab === "replies" ? (
+                      <div className="social-profile-replies">
+                        {profileReplies.length ? (
+                          profileReplies.map((c) => (
+                            <article
+                              key={c.id}
+                              className="mvp-post social-profile-reply"
+                            >
+                              <small>{t("Деможауап", "Демоответ")}</small>
+                              <p>{c.text}</p>
+                              <Link href={href("post", c.post)}>
+                                {t("Әңгімені ашу", "Открыть разговор")}
+                                <ArrowRight size={15} />
+                              </Link>
+                            </article>
+                          ))
                         ) : (
-                          <Link
-                            className="mvp-primary"
-                            href={href(
-                              page === "profile" ? "create" : "communities",
-                            )}
-                          >
-                            {page === "profile"
-                              ? t("Жазба жасау", "Создать пост")
-                              : t(
-                                  "Қауымдастықтарды көру",
-                                  "Посмотреть сообщества",
-                                )}
-                            <ArrowRight size={16} />
-                          </Link>
+                          <div className="mvp-empty">
+                            <h2>
+                              {t("Әзірге жауаптар жоқ", "Пока нет ответов")}
+                            </h2>
+                            <p>
+                              {t(
+                                "Осы профильдің жергілікті жауаптары осында көрінеді.",
+                                "Здесь появятся локальные ответы этого профиля.",
+                              )}
+                            </p>
+                          </div>
                         )}
                       </div>
+                    ) : (
+                      <>
+                        {shown.map((p) => postCard(p))}
+                        {!shown.length && (
+                          <div className="mvp-empty">
+                            <Leaf size={35} />
+                            <h2>
+                              {query ||
+                              (mode === "city" && category !== "all") ||
+                              neighborhood
+                                ? t(
+                                    "Әзірге ештеңе табылмады",
+                                    "Пока ничего не найдено",
+                                  )
+                                : page === "saved"
+                                  ? t(
+                                      "Жақсы идеяларды сақтаңыз",
+                                      "Сохраняйте хорошие идеи",
+                                    )
+                                  : page === "profile"
+                                    ? profileTab === "likes"
+                                      ? t(
+                                          "Әзірге ұнатқандар жоқ",
+                                          "Пока нет отметок «Нравится»",
+                                        )
+                                      : profileTab === "media"
+                                        ? t(
+                                            "Әзірге медиа жоқ",
+                                            "Пока нет публикаций с медиа",
+                                          )
+                                        : id && id !== "me"
+                                          ? t(
+                                              "Әзірге жазбалар жоқ",
+                                              "Пока нет публикаций",
+                                            )
+                                          : t(
+                                              "Бірінші әңгімеңізді бастаңыз",
+                                              "Начните свою первую историю",
+                                            )
+                                    : t(
+                                        "Лентаңызды өзіңіз жасаңыз",
+                                        "Соберите свою ленту",
+                                      )}
+                            </h2>
+                            <p>
+                              {page === "saved"
+                                ? t(
+                                    "Жазбаның астындағы бетбелгіні басыңыз — ол осында пайда болады.",
+                                    "Нажмите на закладку под публикацией — она появится здесь.",
+                                  )
+                                : t(
+                                    "Қызығушылықтарыңызды табыңыз немесе қалаға өз ойыңызды айтыңыз.",
+                                    "Найдите свои интересы или поделитесь с городом своей историей.",
+                                  )}
+                            </p>
+                            {query ||
+                            (mode === "city" && category !== "all") ||
+                            neighborhood ? (
+                              <button
+                                className="mvp-primary"
+                                onClick={() => {
+                                  setQuery("");
+                                  setCategory("all");
+                                  setNeighborhood("");
+                                }}
+                              >
+                                {t("Сүзгілерді тазарту", "Сбросить фильтры")}
+                              </button>
+                            ) : (
+                              <Link
+                                className="mvp-primary"
+                                href={href(
+                                  page === "profile" ? "create" : "communities",
+                                )}
+                              >
+                                {page === "profile"
+                                  ? t("Жазба жасау", "Создать пост")
+                                  : t(
+                                      "Қауымдастықтарды көру",
+                                      "Посмотреть сообщества",
+                                    )}
+                                <ArrowRight size={16} />
+                              </Link>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </section>
                   <aside className="mvp-right-rail">
@@ -1080,7 +989,7 @@ export function CityApp({
                             <div>
                               <strong>{name(c)}</strong>
                               <small>
-                                {c.members} · {t("демо", "демо")}
+                                {t("Демоқауымдастық", "Демосообщество")}
                               </small>
                             </div>
                           </Link>
@@ -1190,6 +1099,7 @@ export function CityApp({
             onClick={() => {
               setToast("");
               setStorageWarning(false);
+              setDismissedStorageWarning(true);
             }}
           >
             <X size={16} />

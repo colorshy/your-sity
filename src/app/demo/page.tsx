@@ -8,6 +8,7 @@ const pages = new Set([
   "profile",
   "saved",
   "about",
+  "notifications",
 ]);
 export default async function Page({
   searchParams,

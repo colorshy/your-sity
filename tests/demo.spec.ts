@@ -29,14 +29,14 @@ test("feed modes, locale persistence and responsive layout", async ({
   await expect(page.locator(".shell")).toHaveAttribute("aria-busy", "false");
   await expect(page.locator(".post")).toHaveCount(8);
   await page
-    .getByRole("button", { name: "Менің қауымдастықтарым", exact: true })
+    .getByRole("button", { name: "Қауымдастықтар", exact: true })
     .click();
   await expect(page.locator(".post")).toHaveCount(3);
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Мои сообщества", exact: true }),
+    page.getByRole("button", { name: "Сообщества", exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(

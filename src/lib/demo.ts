@@ -7,7 +7,6 @@ export const communities = [
     descRu: "Дороги, маршруты и помощь в пути",
     descKk: "Жолдар, бағыттар және жолдағы көмек",
     color: "peach",
-    members: "1,2k",
   },
   {
     id: "discounts",
@@ -17,7 +16,6 @@ export const communities = [
     descRu: "Маленькие находки с большой пользой",
     descKk: "Күнделікті пайдалы әрі тиімді сауда",
     color: "yellow",
-    members: "2,4k",
   },
   {
     id: "city-news",
@@ -27,7 +25,6 @@ export const communities = [
     descRu: "Всё, чем живёт любимый Шымкент",
     descKk: "Сүйікті Шымкентіміздің тыныс-тіршілігі",
     color: "blue",
-    members: "3,1k",
   },
   {
     id: "students",
@@ -37,7 +34,6 @@ export const communities = [
     descRu: "Учёба, книги и новые знакомства",
     descKk: "Оқу, кітаптар және жаңа таныстықтар",
     color: "purple",
-    members: "860",
   },
   {
     id: "neighborhoods",
@@ -47,7 +43,6 @@ export const communities = [
     descRu: "Добрые перемены начинаются во дворе",
     descKk: "Жақсы өзгерістер ауладан басталады",
     color: "green",
-    members: "940",
   },
   {
     id: "events",
@@ -57,7 +52,6 @@ export const communities = [
     descRu: "Планы, ради которых стоит выйти из дома",
     descKk: "Үйден шығуға себеп болатын жоспарлар",
     color: "pink",
-    members: "1,8k",
   },
   {
     id: "marketplace",
@@ -67,10 +61,14 @@ export const communities = [
     descRu: "Любимым вещам — новую историю",
     descKk: "Сүйікті заттарға жаңа өмір сыйлаңыз",
     color: "peach",
-    members: "1,5k",
   },
 ];
 export type DemoPost = {
+  createdAt?: string;
+  authorId?: string;
+  neighborhood?: string;
+  kind?: "news" | "question" | "discussion" | "event" | "marketplace";
+  quoteId?: string;
   id: string;
   community: string;
   authorRu: string;
@@ -89,6 +87,10 @@ export type DemoPost = {
 export const posts: DemoPost[] = [
   {
     id: "walk",
+    authorId: "dana",
+    neighborhood: "al-farabi",
+    kind: "event",
+    createdAt: "2026-11-13T12:30:00+05:00",
     community: "events",
     authorRu: "Дана Абилова",
     authorKk: "Дана Әбілова",
@@ -100,11 +102,15 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Ескі қаладан Қошқар атаға дейін — Шымкентте асықпай серуендеуге идея жинайық. Досыңызға ең алдымен қай жерді көрсетер едіңіз? Сүйікті бағыттарыңызбен бөлісіңіз 🌿",
     time: "12:30",
-    likes: 24,
+    likes: 0,
     image: "/demo/city.svg",
   },
   {
     id: "mountains",
+    authorId: "timur",
+    neighborhood: "karatau",
+    kind: "question",
+    createdAt: "2026-11-13T11:45:00+05:00",
     community: "events",
     authorRu: "Тимур Садыков",
     authorKk: "Тимур Садықов",
@@ -116,12 +122,16 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Шымкент маңындағы тауларға баруды армандаймыз. Жаңадан бастаған адамға не қажет? Ыңғайлы аяқ киім, су және табиғатты аялау туралы сөйлесейік. Фото — көңіл күй иллюстрациясы, бағыттың суреті емес.",
     time: "11:45",
-    likes: 38,
+    likes: 0,
     image: "/demo/mountains.jpg",
     photo: true,
   },
   {
     id: "books",
+    authorId: "arman",
+    neighborhood: "al-farabi",
+    kind: "discussion",
+    createdAt: "2026-11-13T10:15:00+05:00",
     community: "students",
     authorRu: "Арман Нурлан",
     authorKk: "Арман Нұрлан",
@@ -133,11 +143,15 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Әуезов университетінің студенттеріне кітап алмасу идеясы: оқыған кітабыңды әкеліп, жаңа хикая тауып, адамдармен танысасың. Сіз қандай кітап әкелер едіңіз?",
     time: "10:15",
-    likes: 16,
+    likes: 0,
     image: "/demo/books.svg",
   },
   {
     id: "yard",
+    authorId: "aliya",
+    neighborhood: "karatau",
+    kind: "discussion",
+    createdAt: "2026-11-13T09:00:00+05:00",
     community: "neighborhoods",
     authorRu: "Алия Омарова",
     authorKk: "Әлия Омарова",
@@ -149,10 +163,14 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Нұрсатта тұрамын, көршілерге арналған жасыл бұрышты армандаймын. Көлеңкедегі орындық, гүлдер және әңгімелесетін орын. Жайлы аулаңыз қандай болар еді? Бұл — демоталқылауға арналған идея, нақты жоба емес.",
     time: "09:00",
-    likes: 31,
+    likes: 0,
   },
   {
     id: "coffee",
+    authorId: "madina",
+    neighborhood: "turan",
+    kind: "question",
+    createdAt: "2026-11-13T08:40:00+05:00",
     community: "discounts",
     authorRu: "Мадина Асан",
     authorKk: "Мәдина Асан",
@@ -164,10 +182,14 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Шымкенттің жайлы кофеханалары туралы шағын нұсқаулық жинайық. Қай жерде дәмді капучино ішіп, тыныш кітап оқуға болады? Бұл — талқылау үлгісі, нақты жеңілдіктер уәде етілмейді ☕",
     time: "08:40",
-    likes: 12,
+    likes: 0,
   },
   {
     id: "roads",
+    authorId: "erzhan",
+    neighborhood: "enbekshi",
+    kind: "question",
+    createdAt: "2026-11-13T08:10:00+05:00",
     community: "drivers",
     authorRu: "Ержан Касым",
     authorKk: "Ержан Қасым",
@@ -179,10 +201,14 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Қолданылған көлік сатып алғанда неге назар аудару керек? Диагностика, құжаттар, қызмет көрсету тарихы — тізімді бірге жасайық. Тәжірибеңізбен жарнамасыз бөлісіңіз.",
     time: "08:10",
-    likes: 9,
+    likes: 0,
   },
   {
     id: "market",
+    authorId: "saule",
+    neighborhood: "abay",
+    kind: "marketplace",
+    createdAt: "2026-11-13T07:50:00+05:00",
     community: "marketplace",
     authorRu: "Сауле Жан",
     authorKk: "Сәуле Жан",
@@ -194,10 +220,14 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Кімге қажет болар деп қандай зат бергіңіз келеді? Кітаптар, үстел ойындары, гүл құмыралары — кішкентай қадамнан бастайық. Бұл — деможазба, мұнда нақты тауар жоқ.",
     time: "07:50",
-    likes: 7,
+    likes: 0,
   },
   {
     id: "city",
+    authorId: "nurbek",
+    neighborhood: "turan",
+    kind: "news",
+    createdAt: "2026-11-13T07:20:00+05:00",
     community: "city-news",
     authorRu: "Нурбек Али",
     authorKk: "Нұрбек Әли",
@@ -209,6 +239,6 @@ export const posts: DemoPost[] = [
     bodyKk:
       "Жылы кештер, қонақжай адамдар және шай үстіндегі әңгімелер үшін. Тізімді жалғастырыңыз: таныс қаламызға бір-біріміздің көзімізбен қарайық.",
     time: "07:20",
-    likes: 42,
+    likes: 0,
   },
 ];

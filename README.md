@@ -25,7 +25,7 @@ Fixed defaults: endpoint https://fra.cloud.appwrite.io/v1, project your-city, da
 - `/feed`: joined-community or broader city posts, newest-first and paginated.
 - `/create`, `/posts/<id>`: create/edit/soft-delete own posts and comments; report a post.
 - `/moderation`: trusted moderator report queue and hide/dismiss decisions. IDs come only from server configuration.
-- `/` and `/demo`: openly labeled demo feed with search, categories, popular/new sorting and joined-community mode.
+- `/` and `/demo`: openly labeled demo feed with search, type/district filters and three feed tabs.
 - `/demo?page=communities`, `/demo?page=community&id=<id>`: browse/search seven communities, join/leave locally. Use `/demo?page=community&id=<id>` for direct community links.
 - `/demo?page=create`, `?page=post&id=<id>`: create a local post with a gallery cover, open posts, like/save/share and add/remove local comments.
 - `/demo?page=profile`, `?page=saved`: edit demo name/bio/avatar, view own posts and bookmarks.
@@ -34,6 +34,20 @@ Demo changes persist under the versioned `your-city-demo-v2` localStorage key, i
 
 Server actions independently verify identity, bound input and ownership/membership/city. Appwrite data writes are server-only; a metadata gate rejects unsafe table policies and incompatible schema. Existing private profiles are not exposed: author lists contain display name/ID only. Empty/loading/error states and pending forms are provided. Language is retained in profile and cookie. City changes after onboarding require a separate administrative workflow. Content deletion redacts the body and marks deleted; records are retained for moderation consistency.
 
+## Your City 2.0 social demo
+
+The public demo now has three feed tabs: **For You / Для тебя / Сіз үшін**, **City / Город / Қала**, and **Communities / Сообщества / Қауымдастықтар**. For You uses joined communities, followed demo accounts, recency and actual interactions in this browser. City is chronological with news/question/discussion/event/marketplace filters. No seed popularity numbers or AI recommendation claims are used. Community discovery remains one click away.
+
+- Post cards include linked profiles, usernames, dated sample timestamps, community/district tags, expandable text, images, local likes, replies, quotes, bookmarks and share links.
+- Threaded replies keep a simple visual hierarchy, including on phones. You can reply to a person, edit/delete your own demo comments and keep replies to a removed parent via a tombstone. Sample comments cannot be edited as your own.
+- Profiles support cover/avatar/name/username/bio, local follow/unfollow, Posts/Replies/Media/Likes tabs and a keyboard-accessible native edit dialog. Follow counters start at zero and represent only connections in this browser.
+- `/demo?page=notifications` records local reply/like/follow/community actions and persists read/unread state. Optional incoming-style samples are added only by the **Add sample events** control and labeled explicitly. No real person is notified.
+- Report controls store a **local demo report**, not a submission to moderation. Mute/block affect your demo feeds; restore accounts from your own profile's hidden-account disclosure.
+
+Optional location tags use the five administrative districts of Shymkent: Abay, Al-Farabi, Enbekshi, Karatau and Turan. These are broad districts, not verified addresses of sample authors. `src/lib/city-data.ts` holds bilingual names and the city authority reference; no GPS/location permission is requested. The catalog is the extension point for another city's districts. Seed stories have fixed sample dates, not a claim of live news.
+
+Existing local demo data is migrated additively under the same storage key. Comments, follows, notifications and reports are local frontend functionality and do **not** synchronize across real accounts or browsers. Real Appwrite routes retain their existing security and behavior. No infrastructure or database changes are required for this demo upgrade.
+
 ## Validation
 
 ```sh
@@ -41,6 +55,7 @@ npm run lint
 npm run typecheck
 npm run build
 npm run test:security
+npm run test:social
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test
 ```
 

@@ -20,7 +20,8 @@
     "launch:smoke": "node --env-file-if-exists=.env.local --import tsx scripts/live-smoke.ts",
     "appwrite:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/launch-preflight.ts",
     "launch:preview": "node --env-file-if-exists=.env.local --import tsx scripts/vercel-preview.ts --deploy-preview",
-    "test:deployment": "tsx --test scripts/deployment-target.test.ts"
+    "test:deployment": "tsx --test scripts/deployment-target.test.ts",
+    "test:social": "tsx --test scripts/social-demo.test.ts"
   },
   "dependencies": {
     "@vercel/firewall": "^1.2.6",

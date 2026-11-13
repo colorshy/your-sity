@@ -25,6 +25,7 @@ jobs:
       - run: npm run test:security
       - run: npm run test:operations
       - run: npm run test:deployment
+      - run: npm run test:social
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm test
