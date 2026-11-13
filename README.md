@@ -1,6 +1,6 @@
-# Your City — Appwrite application
+# Your City — Шымкент рядом
 
-Next.js, TypeScript and Tailwind community application for Shymkent, with Kazakh/Russian UI. This feature branch reuses the existing app and implements Appwrite Auth, onboarding, membership, feed, post/comment CRUD, reporting and a moderator queue.
+A responsive city social platform for Shymkent, built on the existing Next.js, TypeScript and Tailwind application. Open `/` to explore the visual MVP immediately, without an account or backend credentials. Russian/Kazakh UI, light/dark themes, local images, eight fictional city stories and seven communities are included. Existing Appwrite Auth, onboarding, membership, feed, post/comment CRUD, reporting and moderation remain available through the real account routes.
 
 **Verification boundary:** the founder reports that ChatGPT provisioned the real Appwrite backend in its separately connected integration. Codex has no Appwrite MCP/session key here and does not claim that the actual schema/permissions match the app yet. Local tests use an SDK-compatible loopback fixture. Coordinate live compatibility through [BACKEND_REQUIREMENTS.md](BACKEND_REQUIREMENTS.md); do not recreate resources.
 
@@ -25,7 +25,12 @@ Fixed defaults: endpoint https://fra.cloud.appwrite.io/v1, project your-city, da
 - `/feed`: joined-community or broader city posts, newest-first and paginated.
 - `/create`, `/posts/<id>`: create/edit/soft-delete own posts and comments; report a post.
 - `/moderation`: trusted moderator report queue and hide/dismiss decisions. IDs come only from server configuration.
-- `/demo`: explicitly fictional isolated UI demonstration; never a fallback for missing/failed backend data.
+- `/` and `/demo`: openly labeled demo feed with search, categories, popular/new sorting and joined-community mode.
+- `/demo?page=communities`, `/demo?page=community&id=<id>`: browse/search seven communities, join/leave locally. Use `/demo?page=community&id=<id>` for direct community links.
+- `/demo?page=create`, `?page=post&id=<id>`: create a local post with a gallery cover, open posts, like/save/share and add/remove local comments.
+- `/demo?page=profile`, `?page=saved`: edit demo name/bio/avatar, view own posts and bookmarks.
+
+Demo changes persist under the versioned `your-city-demo-v2` localStorage key, independently of real accounts. If browser storage is denied, interactions use session memory with an explicit warning. User-written content stays in its original language. Locally created post links work only in the browser that contains them; missing posts show a helpful recovery link. No demo action sends data to Appwrite. Profiles, activity counts and sample comments are fictional and labeled; a failed live backend never silently substitutes demo posts into real feeds. Media sources are documented in public/demo/ATTRIBUTION.md.
 
 Server actions independently verify identity, bound input and ownership/membership/city. Appwrite data writes are server-only; a metadata gate rejects unsafe table policies and incompatible schema. Existing private profiles are not exposed: author lists contain display name/ID only. Empty/loading/error states and pending forms are provided. Language is retained in profile and cookie. City changes after onboarding require a separate administrative workflow. Content deletion redacts the body and marks deleted; records are retained for moderation consistency.
 
@@ -39,7 +44,7 @@ npm run test:security
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test
 ```
 
-Browser tests start only a loopback Appwrite fixture on 54321 and Next on 3100; all real project settings are overridden. A single worker avoids fixture transaction interference. They test session persistence, onboarding, membership and content CRUD on desktop/tablet/mobile. Security tests use an in-memory repository and SDK transaction stub: negative ownership/city/member checks, schema/permission rejection and moderator trust. They **do not** validate actual Appwrite permission enforcement.
+Browser tests start only a loopback Appwrite fixture on 54321 and Next on 3100; all real project settings are overridden. A single worker avoids fixture transaction interference. They test session persistence, onboarding, membership and content CRUD on desktop/tablet/mobile, plus the public MVP navigation, search/filters/sorting, membership persistence, local profile/post/comment interactions, bookmarks, clipboard sharing, themes/localization and 320px/storage-denied behavior. Security tests use an in-memory repository and SDK transaction stub: negative ownership/city/member checks, schema/permission rejection and moderator trust. They **do not** validate actual Appwrite permission enforcement.
 
 Stop only a dev server you started before browser tests; Next allows one dev server per checkout. Elsewhere install Playwright Chromium or use a verified installed browser path. `npm run appwrite:inspect` is read-only and optional for an authorized backend operator; it is not part of installation and is not repeatedly retried in this MCP-less session.
 

@@ -27,11 +27,11 @@ test("feed modes, locale persistence and responsive layout", async ({
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/demo");
   await expect(page.locator(".shell")).toHaveAttribute("aria-busy", "false");
-  await expect(page.locator(".post")).toHaveCount(3);
+  await expect(page.locator(".post")).toHaveCount(8);
   await page
     .getByRole("button", { name: "Менің қауымдастықтарым", exact: true })
     .click();
-  await expect(page.locator(".post")).toHaveCount(2);
+  await expect(page.locator(".post")).toHaveCount(3);
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
   await page.reload();
@@ -63,7 +63,8 @@ test("live routes require authentication and demo content stays isolated", async
     ).toBeEnabled();
   }
   await page.goto("/");
-  await expect(page.locator(".post")).toHaveCount(0);
+  await expect(page.locator(".post")).toHaveCount(8);
+  await expect(page.locator(".mvp-demo-badge")).toHaveText("DEMO");
   await page.goto("/sign-up");
   await expect(page.locator("input[name=name]")).toBeEnabled();
   await page.goto("/auth/callback?code=invalid&next=https://evil.example");
