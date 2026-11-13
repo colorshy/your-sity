@@ -94,3 +94,10 @@ Implement milestone 3: typed kk/ru catalogs and feature components, Supabase SSR
 - No cause for the publication error could be established: runtime status exposes no publication failure and no retained diagnostic records exist. No programmatic publish tool is available; publication was not attempted or claimed successful.
 - Saved start_skill clarification in environment draft revision 4: run validation before persistent dev startup to avoid the checkout dev lock, use exact readiness checks, and restart processes per task. install_script, repository pin and network settings retained. No application or history changes.
 - Remaining action: after chat is idle, review/save settings and retry Publish once; if it fails, request the platform publication/snapshot error code and logs using the report identifiers. Milestone 3 remains on hold. Both existing Git branches are preserved.
+
+## Deep publication diagnosis, second iteration
+
+- Added new Git integrity, workspace snapshot-input, disk/inode, network-route and revision-consistency evidence to cloud-publication-investigation.md. No application tests were repeated because code/setup did not change.
+- Confirmed proxy CONNECT denial for GitHub API and official docs, while native Git and npm registry work. The documented live proxy-status read succeeded; no connection to a publication failure is established.
+- Prepared alternative-environment.json as a worksheet for a separate environment without deleting/replacing the current environment. No create/publish tools exist in this session, so alternative creation and publication remain untested.
+- No verified root cause or publication success. Support must expose the publication operation failure/logs; existing draft revision 4 and both branches are preserved.
