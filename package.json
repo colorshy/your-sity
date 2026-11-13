@@ -16,8 +16,11 @@
     "test:security": "tsx --test scripts/authorization.test.ts",
     "appwrite:inspect": "node --env-file-if-exists=.env.local --import tsx scripts/appwrite-inspect.ts",
     "test:operations": "tsx --test scripts/operations.test.ts",
-    "launch:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/launch-preflight.ts",
-    "launch:smoke": "node --env-file-if-exists=.env.local --import tsx scripts/live-smoke.ts"
+    "launch:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/vercel-preview.ts",
+    "launch:smoke": "node --env-file-if-exists=.env.local --import tsx scripts/live-smoke.ts",
+    "appwrite:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/launch-preflight.ts",
+    "launch:preview": "node --env-file-if-exists=.env.local --import tsx scripts/vercel-preview.ts --deploy-preview",
+    "test:deployment": "tsx --test scripts/deployment-target.test.ts"
   },
   "dependencies": {
     "@vercel/firewall": "^1.2.6",
@@ -34,6 +37,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vercel/sdk": "^1.28.63",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.4.6",
     "prettier": "^3.10.1",

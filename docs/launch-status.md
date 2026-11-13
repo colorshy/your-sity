@@ -4,16 +4,16 @@
 
 ## Verified blockers
 
-| Requirement                   | Evidence / status                                                                                                                                                       |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vercel identity/team/project  | No connector, token, cached auth or linked project. CLI 65.15.0 reports Logged out. Existing remote project existence/owner remains unknown, not assumed absent.        |
-| Vercel API access             | HTTPS CONNECT refused by the cloud proxy (403) before Vercel auth. Team authorization/SSO/plan cannot be diagnosed from that response.                                  |
-| Supported owner authorization | CLI login failed with fetch failed before yielding an approval URL. A diagnostic retry enabling inherited Node proxy use also failed.                                   |
-| Anonymous dry inspection      | Both ordinary dry and temporary+dry are blocked by login_required; no deployment or source manifest was returned.                                                       |
-| Real Appwrite access          | No server API key or connector exposed; official endpoint probe blocked at proxy CONNECT (403). No hosted schema/index/permission/Auth/transaction result was observed. |
-| Secure runtime configuration  | Secret/domain requirements saved in the environment draft; runtime still exposes no bindings and no custom hosts. Saving is not application of those changes.           |
-| Live acceptance               | Not run: no real backend access and no preview URL. No two real test accounts, posts, comments or reports were created here.                                            |
-| Production promotion          | Not attempted; no failing/unverified preview was promoted.                                                                                                              |
+| Requirement                   | Evidence / status                                                                                                                                                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vercel identity/team/project  | No connector, token, cached auth or linked project. CLI 65.15.0 reports Logged out. Founder supplied existing project your-city / prj_I9ANo3tGUECTuC53MeDAmURntFIh; remote owner/linkage cannot yet be independently read. |
+| Vercel API access             | HTTPS CONNECT refused by the cloud proxy (403) before Vercel auth. Team authorization/SSO/plan cannot be diagnosed from that response.                                                                                     |
+| Supported owner authorization | CLI login failed with fetch failed before yielding an approval URL. A diagnostic retry enabling inherited Node proxy use also failed.                                                                                      |
+| Anonymous dry inspection      | Both ordinary dry and temporary+dry are blocked by login_required; no deployment or source manifest was returned.                                                                                                          |
+| Real Appwrite access          | No server API key or connector exposed; official endpoint probe blocked at proxy CONNECT (403). No hosted schema/index/permission/Auth/transaction result was observed.                                                    |
+| Secure runtime configuration  | Secret/domain requirements saved in the environment draft; runtime still exposes no bindings and no custom hosts. Saving is not application of those changes.                                                              |
+| Live acceptance               | Not run: no real backend access and no preview URL. No two real test accounts, posts, comments or reports were created here.                                                                                               |
+| Production promotion          | Not attempted; no failing/unverified preview was promoted.                                                                                                                                                                 |
 
 ## Candidate changes
 
@@ -33,7 +33,7 @@ Preflight and live smoke returned exit 2 (blocked), not passed. Preflight perfor
 
 ## Smallest next action
 
-An authorized account owner/integration must bind the Vercel credential to the correct team and securely provision Appwrite server access, and apply the saved outbound permissions. Do not paste secrets into chat or recreate backend tables. No routine code/ID/table setup is assigned to the founder. Once access is supplied, the agent can resume actual discovery, project reuse/creation, scoped secret configuration, Firewall rules, preview deployment and live acceptance using docs/launch-runbook.md. Only successful live acceptance permits promotion.
+Securely authorize this Codex session for **existing** Vercel project prj_I9ANo3tGUECTuC53MeDAmURntFIh and apply outbound api.vercel.com permission. No credentials should be pasted into chat. Appwrite variables reportedly already exist on Vercel; copying the server key into Codex is **not** required to deploy. The agent can then inspect their Preview scopes, repository linkage and Firewall configuration and execute the guarded Preview command. No duplicate project will be created. Direct backend administration remains assigned to the connected backend operator if this session lacks that access. Only successful live acceptance permits promotion.
 
 GitHub source push/PR results are recorded in docs/progress.md or the task response. Repository changes alone are not a live release.
 
@@ -50,3 +50,12 @@ GitHub source push/PR results are recorded in docs/progress.md or the task respo
 ## GitHub result
 
 Release-code commit `c8fa71855f521b1ba6385015d5b70f2f1981fdba` was pushed successfully to feat/milestone-4-launch and independently verified through git ls-remote. Existing main, Appwrite/Supabase and milestone-1/2 branches remain at their previous SHAs. The supported REST pull-request alternative was attempted (base feat/milestone-3-appwrite, draft PR); POST https://api.github.com/repos/colorshy/your-sity/pulls returned Forbidden. No PR was created. Git native access is working; PR API availability/authorization is a separate blocker. A documentation follow-up records these outcomes; its final SHA is reported in the task response. Remote CI execution is not verified.
+
+## Existing-project continuation
+
+- Starting SHA: 6187d8bd043197fee3baa67c90cc73e9973e9e4f; branch feat/milestone-4-launch.
+- Founder reports four Appwrite variables configured remotely. This is not independently verified; no remote env values were requested or printed.
+- Exact-project API probe returned proxy CONNECT 403 before Vercel authorization. CLI still reports Logged out; no token, team binding or Vercel/Appwrite connector is available in this session.
+- Added official-SDK metadata audit and guarded Preview deployment targeting only the supplied project ID. Environment checks consider Preview scope and branch overrides. Direct backend audit remains available as appwrite:preflight.
+- Fresh checks after this change: deployment safety tests **5/5**, lint, TypeScript and production build passed. Earlier 22 security / 11 operations / 27 browser fixture results above were not rerun because application behavior did not change.
+- `npm run launch:preview`: exit 2, vercel-authorization blocked, networkRequests=0, deploymentCreated=false. No live URL, build log, Appwrite two-user result, origin/Firewall change or production release is claimed.

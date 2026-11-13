@@ -1,4 +1,4 @@
-/** Non-deploying launch prerequisite audit; never prints credentials or private rows. */
+/** Optional direct Appwrite audit; not a Vercel deployment prerequisite. Never prints secrets. */
 import { Client, TablesDB } from "node-appwrite";
 import { appwriteConfig } from "../src/lib/appwrite/config";
 import { configureTransport } from "../src/lib/appwrite/transport";
@@ -10,20 +10,9 @@ import {
 } from "../src/lib/appwrite/schema";
 import { AppwriteRepository } from "../src/lib/appwrite/store";
 import { verifyBackend } from "../src/lib/operations/readiness";
-import { canonicalOrigin } from "../src/lib/operations/config";
 async function main() {
   const missing: string[] = [];
   if (!process.env.APPWRITE_API_KEY) missing.push("APPWRITE_API_KEY");
-  if (!process.env.VERCEL_TOKEN) missing.push("VERCEL_TOKEN");
-  if (!process.env.VERCEL_AUTH_RATE_LIMIT_ID)
-    missing.push("VERCEL_AUTH_RATE_LIMIT_ID");
-  if (!process.env.VERCEL_WRITE_RATE_LIMIT_ID)
-    missing.push("VERCEL_WRITE_RATE_LIMIT_ID");
-  try {
-    canonicalOrigin(process.env.NEXT_PUBLIC_SITE_URL, true);
-  } catch {
-    missing.push("NEXT_PUBLIC_SITE_URL (trusted HTTPS deployment origin)");
-  }
   if (missing.length) {
     console.log(
       JSON.stringify({ status: "blocked", missing, networkRequests: 0 }),

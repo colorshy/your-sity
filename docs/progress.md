@@ -184,3 +184,9 @@ No actual Vercel project/deployment was created; correct owner/team and any exis
 ### Confirmed source publication
 
 Code commit `c8fa71855f521b1ba6385015d5b70f2f1981fdba` successfully pushed to feat/milestone-4-launch; native remote verification matched it. REST PR creation was attempted as the supported alternative to the previously blocked GraphQL route and returned Forbidden. No PR or production deployment was created. This documentation-only follow-up records those confirmed results; its SHA is reported in the task response. CI workflow source is pushed, but a successful remote CI run is not claimed.
+
+### Milestone 4 — exact existing-project deployment continuation
+
+Started from 6187d8bd043197fee3baa67c90cc73e9973e9e4f on feat/milestone-4-launch. Target is the founder-supplied existing Vercel project your-city / prj_I9ANo3tGUECTuC53MeDAmURntFIh. Added an official-SDK metadata audit and guarded Preview command; they never create projects or promote production, inspect only environment names/scopes, verify GitHub linkage and pushed source, and validate deployment readback. Already configured remote Appwrite secrets need not be copied locally. The optional direct backend audit is now appwrite:preflight.
+
+Fresh deployment safety tests: 5/5; lint, typecheck and production build passed. Application fixture suites remain the previous verified 22/11/27 results; not rerun for tooling-only changes. Vercel CLI remains Logged out, VERCEL_TOKEN unset, no relevant connector exposed; exact-project API probe is refused at cloud proxy CONNECT 403. launch:preview exits 2 before network/deployment creation. Secure project-scoped Vercel authorization and applied api.vercel.com permission are the minimum outside actions. Remote env scopes, live Appwrite, actual Firewall rules, Preview and production remain unverified. No main/default/other branch changes. Commit/push result is reported with the final SHA in the task response.
