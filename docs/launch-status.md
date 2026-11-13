@@ -46,3 +46,7 @@ GitHub source push/PR results are recorded in docs/progress.md or the task respo
 - Browser/local Appwrite fixture: **27 passed, 0 failed** across desktop/tablet/mobile.
 - Actual deployed Appwrite/Auth/Firewall/two-user tests: **unrun / blocked**, not passed.
 - No live website URL or production deployment is claimed.
+
+## GitHub result
+
+Release-code commit `c8fa71855f521b1ba6385015d5b70f2f1981fdba` was pushed successfully to feat/milestone-4-launch and independently verified through git ls-remote. Existing main, Appwrite/Supabase and milestone-1/2 branches remain at their previous SHAs. The supported REST pull-request alternative was attempted (base feat/milestone-3-appwrite, draft PR); POST https://api.github.com/repos/colorshy/your-sity/pulls returned Forbidden. No PR was created. Git native access is working; PR API availability/authorization is a separate blocker. A documentation follow-up records these outcomes; its final SHA is reported in the task response. Remote CI execution is not verified.

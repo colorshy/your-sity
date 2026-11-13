@@ -180,3 +180,7 @@ Milestone 4 remains **incomplete** until a real preview URL, real backend accept
 Clean npm ci and production-mode npm ci --include=dev passed. ESLint, TypeScript and production build passed. Final suites: **22/22 security**, **11/11 operations**, **27/27 browser fixture tests**. One operations-test fixture initially lacked newly required trusted platform metadata; corrected the fixture and reran the affected checks. No current local failures remain. Live Appwrite, actual Vercel Firewall, remote deployment and two-user acceptance remain blocked/unrun, not passed.
 
 No actual Vercel project/deployment was created; correct owner/team and any existing project cannot be discovered while logged out and network-blocked. The smallest remaining outside action is secure Vercel/Appwrite authorization plus application of outbound permissions; routine engineering resumes afterward from docs/launch-runbook.md. GitHub commit/push and PR outcome are reported in the task response; no default-branch changes or force pushes.
+
+### Confirmed source publication
+
+Code commit `c8fa71855f521b1ba6385015d5b70f2f1981fdba` successfully pushed to feat/milestone-4-launch; native remote verification matched it. REST PR creation was attempted as the supported alternative to the previously blocked GraphQL route and returned Forbidden. No PR or production deployment was created. This documentation-only follow-up records those confirmed results; its SHA is reported in the task response. CI workflow source is pushed, but a successful remote CI run is not claimed.
