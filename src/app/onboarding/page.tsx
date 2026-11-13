@@ -1,5 +1,5 @@
-import { supabaseConfig } from "@/lib/supabase/config";
-import { requireUser } from "@/lib/auth";
+import { appwriteConfig } from "@/lib/appwrite/config";
+import { requireService } from "@/lib/auth";
 import { translator } from "@/lib/locale";
 import { Shell, Configuration, Notice } from "@/components/backend/shell";
 import { Submit } from "@/components/backend/submit";
@@ -9,27 +9,19 @@ export default async function Page({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  if (!supabaseConfig()) return <Configuration />;
-  const { client, user } = await requireUser();
+  if (!appwriteConfig()) return <Configuration />;
+  const { service } = await requireService();
   const { locale, t } = await translator();
-  const [cities, communities, profile, memberships] = await Promise.all([
-    client.from("cities").select("*").eq("slug", "shymkent"),
-    client.from("communities").select("*"),
-    client
-      .from("profiles")
-      .select("display_name,city_id")
-      .eq("id", user.id)
-      .single(),
-    client
-      .from("community_memberships")
-      .select("community_id")
-      .eq("user_id", user.id),
-  ]);
-  if (cities.error || communities.error || profile.error || memberships.error)
-    throw new Error("Onboarding data unavailable");
-  const city = cities.data[0];
-  if (!city) throw new Error("City unavailable");
-  const selected = memberships.data.map((m) => m.community_id);
+  const profile = await service.ensureProfile();
+  const cities = await service.cities();
+  const city = cities.find((c) => c.id === "shymkent");
+  if (!city) throw new Error("Existing Shymkent row unavailable");
+  const communities = await service.repo.list(
+    "communities",
+    [{ field: "city_id", value: city.id }],
+    { limit: 100 },
+  );
+  const memberships = await service.memberships();
   return (
     <Shell>
       <section className="form-panel">
@@ -43,8 +35,15 @@ export default async function Page({
               required
               minLength={2}
               maxLength={80}
-              defaultValue={profile.data.display_name}
+              defaultValue={profile.display_name}
             />
+          </label>
+          <label>
+            {t("Тіл", "Язык")}
+            <select name="locale" defaultValue={profile.locale || locale}>
+              <option value="kk">Қазақша</option>
+              <option value="ru">Русский</option>
+            </select>
           </label>
           <label>
             {t("Қала", "Город")}
@@ -58,19 +57,19 @@ export default async function Page({
             <legend>
               {t("Қауымдастықтарды таңдаңыз", "Выберите сообщества")}
             </legend>
-            {communities.data
-              .filter((c) => c.city_id === city.id)
-              .map((c) => (
-                <label key={c.id} className="choice">
-                  <input
-                    type="checkbox"
-                    name="communities"
-                    value={c.id}
-                    defaultChecked={selected.includes(c.id)}
-                  />
-                  {c[locale === "kk" ? "name_kk" : "name_ru"]}
-                </label>
-              ))}
+            {communities.map((c) => (
+              <label key={c.id} className="choice">
+                <input
+                  type="checkbox"
+                  name="communities"
+                  value={c.id}
+                  defaultChecked={memberships.some(
+                    (m) => m.community_id === c.id,
+                  )}
+                />
+                {c[locale === "kk" ? "name_kk" : "name_ru"]}
+              </label>
+            ))}
           </fieldset>
           <Submit>{t("Сақтау", "Сохранить")}</Submit>
         </form>

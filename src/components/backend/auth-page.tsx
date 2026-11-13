@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { supabaseConfig } from "@/lib/supabase/config";
+import { appwriteConfig } from "@/lib/appwrite/config";
 import { translator } from "@/lib/locale";
-import { authenticate, resendVerification } from "@/app/actions";
+import { authenticate } from "@/app/actions";
 import { Shell, Configuration, Notice } from "./shell";
 import { Submit } from "./submit";
 export async function AuthPage({
@@ -11,7 +11,7 @@ export async function AuthPage({
   signup?: boolean;
   params: { error?: string; message?: string };
 }) {
-  if (!supabaseConfig()) return <Configuration />;
+  if (!appwriteConfig()) return <Configuration />;
   const { t } = await translator();
   return (
     <Shell>
@@ -61,23 +61,6 @@ export async function AuthPage({
             {signup ? t("Тіркелу", "Зарегистрироваться") : t("Кіру", "Войти")}
           </Submit>
         </form>
-        {!signup && (
-          <details>
-            <summary>
-              {t(
-                "Растау хатын қайта жіберу",
-                "Отправить письмо подтверждения повторно",
-              )}
-            </summary>
-            <form action={resendVerification}>
-              <label>
-                Email
-                <input name="email" type="email" required maxLength={254} />
-              </label>
-              <Submit>{t("Хат жіберу", "Отправить письмо")}</Submit>
-            </form>
-          </details>
-        )}
         <Link href={signup ? "/sign-in" : "/sign-up"}>
           {signup
             ? t("Аккаунтым бар", "Уже есть аккаунт")

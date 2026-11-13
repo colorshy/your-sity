@@ -105,7 +105,7 @@ test("SSR login persists across reload and logout clears access (local Auth fixt
   await page.getByRole("button", { name: "Кіру", exact: true }).click();
   await expect(page).toHaveURL(/\/feed$/);
   await expect(
-    page.getByText("Әзірге жазбалар жоқ.", { exact: true }),
+    page.getByRole("heading", { name: "Қала лентасы", exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(page).toHaveURL(/\/feed$/);
@@ -120,7 +120,7 @@ test("SSR login persists across reload and logout clears access (local Auth fixt
   await page.goto("/profile");
   await expect(page).toHaveURL(/\/sign-in$/);
 });
-test("invalid login and email confirmation state (local Auth fixture)", async ({
+test("invalid login returns a generic authentication error", async ({
   page,
 }) => {
   await page.goto("/sign-in");
@@ -130,22 +130,87 @@ test("invalid login and email confirmation state (local Auth fixture)", async ({
   await page.locator("input[name=password]").fill("wrong-password");
   await page.getByRole("button", { name: "Кіру", exact: true }).click();
   await expect(page.locator(".form-panel").getByRole("alert")).toBeVisible();
+});
+test("registration, onboarding and membership persistence (Appwrite fixture)", async ({
+  page,
+}, info) => {
+  const email = "new-" + info.project.name + "@example.test";
   await page.goto("/sign-up");
-  await page.locator("input[name=name]").fill("Test Resident");
-  await page
-    .locator(".form-panel > form input[name=email]")
-    .fill("resident@example.test");
+  await page.locator("input[name=name]").fill("New Resident");
+  await page.locator("input[name=email]").fill(email);
   await page.locator("input[name=password]").fill("Test-password-123!");
   await page.getByRole("button", { name: "Тіркелу", exact: true }).click();
-  await expect(page).toHaveURL(/\/sign-in\?message=verify$/);
-  await expect(page.getByRole("status")).toBeVisible();
-});
-test("email token confirmation establishes a session (local Auth fixture)", async ({
-  page,
-}) => {
-  await page.goto("/auth/confirm?token_hash=valid-test-token&type=email");
-  await expect(page).toHaveURL("http://127.0.0.1:3100/onboarding");
-  await expect(page.locator("input[name=name]")).toHaveValue("Test Resident");
-  await page.goto("/feed");
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await page.locator("input[value=events]").check();
+  await page.getByRole("button", { name: "Сақтау", exact: true }).click();
   await expect(page).toHaveURL(/\/feed$/);
+  await page.goto("/communities");
+  const events = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "Іс-шаралар", exact: true }),
+  });
+  await expect(
+    events.getByRole("button", { name: "Шығу", exact: true }),
+  ).toBeVisible();
+  await events.getByRole("button", { name: "Шығу", exact: true }).click();
+  await expect(
+    events.getByRole("button", { name: "Қосылу", exact: true }),
+  ).toBeVisible();
+  await events.getByRole("button", { name: "Қосылу", exact: true }).click();
+  await expect(
+    events.getByRole("button", { name: "Шығу", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    events.getByRole("button", { name: "Шығу", exact: true }),
+  ).toBeVisible();
+});
+test("post and comment CRUD (Appwrite fixture)", async ({ page }, info) => {
+  await page.goto("/sign-in");
+  await page
+    .locator(".form-panel > form input[name=email]")
+    .fill("writer-" + info.project.name + "@example.test");
+  await page.locator("input[name=password]").fill("Test-password-123!");
+  await page.getByRole("button", { name: "Кіру", exact: true }).click();
+  await expect(page).toHaveURL(/\/feed$/);
+  await page.goto("/create");
+  await page.locator("textarea[name=body]").fill("Post " + info.project.name);
+  await page.getByRole("button", { name: "Жариялау", exact: true }).click();
+  await expect(page).toHaveURL(/\/posts\/[a-z0-9]+$/);
+  const url = page.url();
+  await page
+    .locator("form")
+    .filter({ has: page.locator("input[name=post]") })
+    .filter({ has: page.getByRole("button", { name: "Жіберу", exact: true }) })
+    .locator("textarea")
+    .fill("Comment original");
+  await page.getByRole("button", { name: "Жіберу", exact: true }).click();
+  await expect(
+    page.locator("p").filter({ hasText: /^Comment original$/ }),
+  ).toBeVisible();
+  const comment = page.locator("article").filter({
+    has: page.locator("p").filter({ hasText: /^Comment original$/ }),
+  });
+  await comment.getByText("Өңдеу", { exact: true }).click();
+  await comment.locator("textarea").fill("Comment edited");
+  await comment.getByRole("button", { name: "Сақтау", exact: true }).click();
+  await expect(
+    page.locator("p").filter({ hasText: /^Comment edited$/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Пікірді жою", exact: true }).click();
+  await expect(
+    page.locator("p").filter({ hasText: /^Comment edited$/ }),
+  ).toHaveCount(0);
+  await page.getByText("Жазбаны өңдеу", { exact: true }).click();
+  const edit = page
+    .locator("details")
+    .filter({ has: page.getByText("Жазбаны өңдеу", { exact: true }) });
+  await edit.locator("textarea").fill("Post edited");
+  await edit.getByRole("button", { name: "Сақтау", exact: true }).click();
+  await expect(
+    page.locator("p").filter({ hasText: /^Post edited$/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Жазбаны жою", exact: true }).click();
+  await expect(page).toHaveURL(/\/feed$/);
+  await page.goto(url);
+  await expect(page.locator("main").getByRole("status")).toBeVisible();
 });

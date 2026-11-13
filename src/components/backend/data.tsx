@@ -2,14 +2,7 @@ import Link from "next/link";
 import { translator } from "@/lib/locale";
 import { membership } from "@/app/actions";
 import { Submit } from "./submit";
-export type Community = {
-  id: string;
-  slug: string;
-  name_kk: string;
-  name_ru: string;
-  description_kk: string;
-  description_ru: string;
-};
+export type Community = import("@/lib/appwrite/types").Community;
 export async function CommunityCards({
   communities,
   joined,
@@ -82,8 +75,8 @@ export async function PostList({
               { timeZone: "Asia/Almaty" },
             )}
           </time>
-          <Link className="all-link" href={"/communities/" + p.community_id}>
-            {t("Қауымдастық", "Сообщество")}
+          <Link className="all-link" href={"/posts/" + p.id}>
+            {t("Талқылау", "Обсуждение")}
           </Link>
         </article>
       ))}
