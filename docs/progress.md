@@ -75,3 +75,39 @@ Implement milestone 3: typed kk/ru catalogs and feature components, Supabase SSR
 - To unblock API access, review the environment GitHub connection permissions (repository contents and pull-request write access) and allow `api.github.com` in restricted network settings. Retry `gh api repos/colorshy/your-sity` and PR creation after saving settings. Do not replace working Git authentication or paste tokens into chat. The observed response does not identify whether API policy or authorization caused the denial.
 - Establish the intended default/base-branch strategy for this initially empty repository before opening the initial-code PR; an unrelated README commit on main will not supply a common ancestor. No main branch, forced push, history rewrite or automatic merge was performed.
 - The subsequent documentation-only commit records these confirmed results; its final hash is reported in the task response and can be read with `git log -1`.
+
+## Milestone 3 — Supabase foundation implementation (2026-11-13)
+
+The founder explicitly authorized starting Milestone 3 without waiting for cloud environment publication. Work is on `feat/milestone-3-supabase`, created from remote main at `766d49d1e3d356888d398e5ae036114fcdc9048d`; other branches and their publication reports are preserved.
+
+Implemented SSR public/server client factories and Next.js 16 proxy cookie refresh; verified-user server guards; registration, sign-in/out, cookie session persistence, email verification via PKCE or token hash, generic errors and verification-email resend. Auth return URLs use the configured canonical origin and fixed local destinations. Onboarding atomically saves profile name, Shymkent and selected community memberships. Real community discovery/membership, city/joined-community feed queries and own profile use Supabase. Fictional posts exist only under /demo; live empty states show no fabricated activity.
+
+Added `supabase/migrations/202611130001_foundation.sql`: seven public RLS tables, constraints/indexes, safe Auth-profile trigger, Shymkent/community category seeds, private moderator support and restricted onboarding RPC. No hosted database mutation has been performed. A read-only `supabase/preflight.sql` is provided to inspect actual schema, policies, triggers and migration history before applying anything. Conflicting objects cause transactional failure, not replacement.
+
+### Connection evidence and blockers
+
+- No Supabase connector/SQL-management tools were exposed in the active tool inventory; no injected Supabase/database variables existed initially. Founder supplied a project URL and publishable key, stored only in ignored `.env.local` with restricted permissions. No secret/service-role key is used by the application.
+- Auth settings and REST cities probes to the supplied project failed at proxy CONNECT with 403 before reaching Supabase. A saved environment draft adds the exact project hostname and public-variable requirements; runtime verification still reports that hostname not allowed. Saving the draft does not apply it.
+- The supplied PostgreSQL connection string contains a password placeholder and is not usable migration authorization. Supabase login/link commands alone do not supply a management token or database access. Existing hosted tables/migrations, email settings, hosted Auth success, hosted RLS and real-data persistence remain unverified.
+- The canonical development origin is configured locally; hosted deployment must set its actual origin and Auth redirect allowlist. Email confirmation delivery must be tested using an authorized account. Keys are never committed.
+
+### Validation
+
+- Dependency installation succeeded; @supabase/ssr updated to 0.12.7 and PGlite added for local PostgreSQL tests.
+- Migration and authorization tests: 19/19 passed on embedded PostgreSQL with a minimal auth schema/role shim, including anonymous/cross-user denial, membership/city checks, hidden data, moderator trust, owner deletion and collision rollback. This is local RLS evidence, not hosted Supabase verification.
+- Browser suite uses an isolated loopback Auth/REST fixture; it never sends test credentials to the founder's project. Covers SSR sign-in/out, reload persistence, invalid login, email-confirmation state, token confirmation, guards, locale and demo isolation across three viewports.
+- Initial browser startup was blocked by a dev server left from the prior task; only that identified server was stopped. Subsequent tests exposed a callback origin issue (fixed with canonical SITE_URL), ambiguous logout text (clarified), and a test selector that also matched Next's route announcer (scoped to the form panel).
+- Final command results are recorded below after completion. No production deployment or real Supabase integration success is claimed.
+
+### Exact next task
+
+Save/apply the project-host network setting and secure environment variables. Obtain authorized SQL Editor/CLI access, inspect preflight results and existing migration history, reconcile any conflicts, then apply the migration once. Configure Supabase Auth site/redirect/email settings and verify two real test users: signup/confirmation/session, onboarding/membership persistence, cross-user/anonymous write denials and report privacy. Only after this hosted acceptance pass proceed to post/comment creation and moderation UI (next feature milestone).
+
+### Final Milestone 3 validation result
+
+- Dependency installation: passed. Lint: passed. TypeScript: passed. Production build: passed (14 application routes including Auth callbacks; SSR proxy compiled).
+- Local PostgreSQL migration/RLS tests: **19 passed, 0 failed**.
+- Browser tests: **21 passed, 0 failed** across desktop/tablet/mobile, using the documented local Auth/REST fixture. Sign-in, logout, reload persistence and email token confirmation were exercised; this does not prove hosted Auth/email delivery.
+- Candidate-file credential scan found no keys/tokens; only the blank .env.example is tracked. Actual public project configuration stays in ignored .env.local/environment settings.
+- Hosted migration verification, actual project login and hosted cross-user RLS checks: **not run / blocked**, not passed. No live user-generated data has been read or changed.
+- Code and docs are ready for review; Milestone 3 is not declared fully integrated until hosted acceptance checks pass. The commit/push result and final SHA are reported in the task response.

@@ -1,4 +1,8 @@
-import { CityApp } from "@/components/city-app";
-export default function Page() {
-  return <CityApp page="sign-up" />;
+import { AuthPage } from "@/components/backend/auth-page";
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; message?: string }>;
+}) {
+  return <AuthPage signup={true} params={await searchParams} />;
 }

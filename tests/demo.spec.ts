@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 test("discover, search, join and leave a demo community", async ({ page }) => {
-  await page.goto("/communities");
+  await page.goto("/demo?page=communities");
   await expect(page.locator(".shell")).toHaveAttribute("aria-busy", "false");
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await page
@@ -25,7 +25,7 @@ test("feed modes, locale persistence and responsive layout", async ({
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/feed");
+  await page.goto("/demo");
   await expect(page.locator(".shell")).toHaveAttribute("aria-busy", "false");
   await expect(page.locator(".post")).toHaveCount(3);
   await page
@@ -45,30 +45,107 @@ test("feed modes, locale persistence and responsive layout", async ({
   ).toBe(true);
   expect(errors).toEqual([]);
 });
-test("all routes render and auth cannot submit in demo mode", async ({
+test("live routes require authentication and demo content stays isolated", async ({
   page,
 }) => {
   for (const route of [
-    "/",
-    "/about",
+    "/feed",
     "/profile",
     "/onboarding",
+    "/communities",
+    "/communities/test",
     "/create",
-    "/sign-in",
-    "/sign-up",
-    "/communities/events",
   ]) {
-    const response = await page.goto(route);
-    expect(response?.status()).toBe(200);
-    await expect(page.locator("h1")).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/sign-in$/);
+    await expect(
+      page.locator(".form-panel > form input[name=email]"),
+    ).toBeEnabled();
   }
+  await page.goto("/");
+  await expect(page.locator(".post")).toHaveCount(0);
+  await page.goto("/sign-up");
+  await expect(page.locator("input[name=name]")).toBeEnabled();
+  await page.goto("/auth/callback?code=invalid&next=https://evil.example");
+  await expect(page).toHaveURL(
+    "http://127.0.0.1:3100/sign-in?error=verification",
+  );
+  await expect(page.locator(".form-panel").getByRole("alert")).toBeVisible();
+  await page.goto("/auth/confirm?token_hash=invalid&type=recovery");
+  await expect(page).toHaveURL(
+    "http://127.0.0.1:3100/sign-in?error=verification",
+  );
+});
+test("real UI locale and form validation", async ({ page }) => {
+  await page.goto("/sign-up");
+  await page.getByRole("button", { name: "РУС", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+  await expect(
+    page.getByRole("heading", { name: "Регистрация", exact: true }),
+  ).toBeVisible();
+  await page.locator("input[name=name]").fill("A");
+  await page.locator(".form-panel > form input[name=email]").fill("invalid");
+  await page.locator("input[name=password]").fill("short");
+  expect(
+    await page
+      .locator(".form-panel > form input[name=email]")
+      .evaluate((el) => (el as HTMLInputElement).checkValidity()),
+  ).toBe(false);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
+});
+test("SSR login persists across reload and logout clears access (local Auth fixture)", async ({
+  page,
+}) => {
   await page.goto("/sign-in");
-  await expect(page.locator("input[type=email]")).toBeDisabled();
-  await page.goto("/communities/missing");
-  await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
+  await page
+    .locator(".form-panel > form input[name=email]")
+    .fill("resident@example.test");
+  await page.locator("input[name=password]").fill("Test-password-123!");
+  await page.getByRole("button", { name: "Кіру", exact: true }).click();
+  await expect(page).toHaveURL(/\/feed$/);
+  await expect(
+    page.getByText("Әзірге жазбалар жоқ.", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/feed$/);
+  await page.goto("/profile");
+  await expect(
+    page.getByRole("heading", { name: "Test Resident", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Аккаунттан шығу", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await page.goto("/profile");
+  await expect(page).toHaveURL(/\/sign-in$/);
+});
+test("invalid login and email confirmation state (local Auth fixture)", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await page
+    .locator(".form-panel > form input[name=email]")
+    .fill("resident@example.test");
+  await page.locator("input[name=password]").fill("wrong-password");
+  await page.getByRole("button", { name: "Кіру", exact: true }).click();
+  await expect(page.locator(".form-panel").getByRole("alert")).toBeVisible();
+  await page.goto("/sign-up");
+  await page.locator("input[name=name]").fill("Test Resident");
+  await page
+    .locator(".form-panel > form input[name=email]")
+    .fill("resident@example.test");
+  await page.locator("input[name=password]").fill("Test-password-123!");
+  await page.getByRole("button", { name: "Тіркелу", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in\?message=verify$/);
+  await expect(page.getByRole("status")).toBeVisible();
+});
+test("email token confirmation establishes a session (local Auth fixture)", async ({
+  page,
+}) => {
+  await page.goto("/auth/confirm?token_hash=valid-test-token&type=email");
+  await expect(page).toHaveURL("http://127.0.0.1:3100/onboarding");
+  await expect(page.locator("input[name=name]")).toHaveValue("Test Resident");
+  await page.goto("/feed");
+  await expect(page).toHaveURL(/\/feed$/);
 });

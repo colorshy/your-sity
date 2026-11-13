@@ -1,19 +1,32 @@
-# Database plan (not applied)
+# Database — initial migration
 
-Implement versioned migrations under supabase/migrations in milestone 3. No database provisioned or SQL executed in this phase.
+`supabase/migrations/202611130001_foundation.sql` creates seven RLS-enabled public tables: cities, profiles, communities, community_memberships, posts, comments, reports. IDs use UUIDs, memberships use a composite key, reports enforce one report per user/post. Foreign keys, bounded nonempty names/text, status constraints, timestamps and query/foreign-key indexes are included.
 
-| Table                 | Planned columns / rules                                                             |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| cities                | UUID PK, unique slug, localized name; seed Shymkent                                 |
-| profiles              | auth.users UUID PK/FK, display_name, city_id FK, created_at; no public email        |
-| communities           | UUID PK, city_id FK, unique(city_id, slug), localized name/description              |
-| community_memberships | composite PK(user_id, community_id), created_at                                     |
-| posts                 | UUID PK, community_id FK, author_id FK, bounded text, created_at, moderation status |
-| comments              | UUID PK, post_id FK, author_id FK, bounded text, created_at                         |
-| reports               | UUID PK, reporter_id FK, post_id FK, reason, status, reviewed_by, timestamps        |
+The dedicated `your_city_private` schema contains trusted moderator IDs and helper functions. It is not a PostgREST exposed schema. Never grant app users access to moderator rows. Provision moderators through authorized administrative SQL only. The app uses only the publishable key and the user's session.
 
-Index posts(community_id, created_at DESC), comments(post_id, created_at), memberships(user_id), reports(status, created_at). Define deletion behavior deliberately and prevent profile removal from silently destroying moderation evidence.
+## Apply safely
 
-Enable RLS on every table. Public reads only for public city/community metadata and visible posts; profiles expose only safe fields. Members may create posts in joined communities within their selected city. Owners may delete own posts. Comment creation requires authenticated membership. Membership inserts/deletes require auth.uid() = user_id. Users may submit reports but cannot read others’ reports or set resolution fields. City/community administration and report review require trusted moderator roles; users must never grant themselves roles. Use a private role table or server-managed claims; audit review actions. Avoid recursive membership policies.
+Remote schema and migration history have not been inspected: the project API is blocked by the current cloud proxy, and no SQL credentials/management integration are available. Do not assume the project is empty.
 
-Required integration tests: anonymous write denial; cross-user update/delete denial; nonmember post denial; cross-city post denial; hidden-post read denial; report privacy; moderator authorization; constraints and indexes. These checks are pending, not verified.
+Run the read-only `supabase/preflight.sql` through an authorized SQL Editor/connection. Inspect existing tables, RLS, functions, Auth triggers and migration history. If any proposed public table/function or your_city_private schema already exists, reconcile via a separate additive reviewed migration. This migration intentionally fails on conflicts; it does not DROP or replace existing data/objects. The entire migration is transactional. Existing Auth accounts receive new safe profiles; Auth records are untouched.
+
+Apply once using Supabase migration tooling or SQL Editor with ownership privileges sufficient to create tables/functions and an auth.users trigger. Do not put database passwords or access tokens into Git. If applied through SQL Editor, record the corresponding migration version using your migration-management workflow before future db push operations; avoid reapplying it.
+
+Seeds include Shymkent and seven community categories, with no fabricated posts, comments, reports or accounts. An Auth insert trigger creates a profile, validating the display-name length. `complete_onboarding` verifies identity, name, city and every community, locks the caller's profile and atomically saves choices. A selected city cannot be changed afterward through this MVP RPC.
+
+## Authorization
+
+| Data                 | Access                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| cities / communities | Public read; administrative writes only                                                                                                  |
+| profiles             | Authenticated read of safe fields; owner updates display_name only                                                                       |
+| memberships          | Owner read/delete; owner insert only in selected city                                                                                    |
+| posts                | Authenticated visible-post read; joined same-city members insert under own identity; owner or moderator delete; no general update grants |
+| comments             | Read only when parent post visible; members comment under own identity on nonhidden posts; owner/moderator delete                        |
+| reports              | Reporter/moderator read; authenticated users report visible posts under own identity; no client status mutation                          |
+
+Service/database-owner roles bypass RLS and must never be used to test normal users. Deleting an Auth account with authored content may be restricted by content foreign keys; account deletion/anonymization is a separate administrative workflow.
+
+## Tests and limits
+
+`npm run test:db` applies the actual migration inside PGlite (embedded PostgreSQL), supplies minimal auth.users/auth.uid and anon/authenticated roles, then SET ROLEs for each authorization case. It tests anonymous denial, own/cross-user profile writes, city/membership invariants, forged authors, nonmember publishing, hidden posts, comments, report privacy, trusted moderators, owner deletion, and safe migration collision rollback. This validates PostgreSQL policy behavior locally. It does not validate hosted Supabase grants/default privileges, JWT transport, email delivery or actual hosted migration state; rerun real-user checks against an authorized development project after configuration is applied.

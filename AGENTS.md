@@ -17,3 +17,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Milestone 3 conventions
+
+Real server UI is in src/components/backend; cookie-bound Supabase clients in src/lib/supabase. Every protected action/page validates the user server-side; RLS is mandatory even for direct API requests. /demo is explicitly fictional and must never be used as a fallback for a failed real-data query. Use NEXT_PUBLIC_SITE_URL as trusted Auth callback origin. Browser tests use a local Auth/REST fixture on 54321; they are not live-integration proof. Run npm run test:db for actual migration/RLS execution in PGlite, and distinguish its auth shim from hosted Supabase. Run read-only supabase/preflight.sql and inspect existing migration history before applying hosted SQL. Do not modify/drop conflicting data to make a migration pass. Real project network/migration access remains a prerequisite for hosted validation; publication is no longer a prerequisite to this authorized development task.

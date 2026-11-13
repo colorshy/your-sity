@@ -12,10 +12,11 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
-    "format": "prettier --write src docs *.md *.json *.mjs"
+    "format": "prettier --write src docs *.md *.json *.mjs",
+    "test:db": "node --test scripts/database.test.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.6.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.0.0",
     "lucide-react": "^0.468.0",
     "next": "16.4.6",
@@ -23,6 +24,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^24.0.0",
