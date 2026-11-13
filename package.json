@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.19.0"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
@@ -14,9 +14,13 @@
     "test": "playwright test",
     "format": "prettier --write src docs *.md *.json *.mjs",
     "test:security": "tsx --test scripts/authorization.test.ts",
-    "appwrite:inspect": "tsx scripts/appwrite-inspect.ts"
+    "appwrite:inspect": "node --env-file-if-exists=.env.local --import tsx scripts/appwrite-inspect.ts",
+    "test:operations": "tsx --test scripts/operations.test.ts",
+    "launch:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/launch-preflight.ts",
+    "launch:smoke": "node --env-file-if-exists=.env.local --import tsx scripts/live-smoke.ts"
   },
   "dependencies": {
+    "@vercel/firewall": "^1.2.6",
     "lucide-react": "^0.468.0",
     "next": "16.4.6",
     "node-appwrite": "^31.2.0",

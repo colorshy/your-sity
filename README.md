@@ -44,3 +44,9 @@ Browser tests start only a loopback Appwrite fixture on 54321 and Next on 3100; 
 Stop only a dev server you started before browser tests; Next allows one dev server per checkout. Elsewhere install Playwright Chromium or use a verified installed browser path. `npm run appwrite:inspect` is read-only and optional for an authorized backend operator; it is not part of installation and is not repeatedly retried in this MCP-less session.
 
 See docs/architecture.md, docs/database.md, docs/progress.md and BACKEND_REQUIREMENTS.md. Passing tests/pushing Git is not a production deployment or Codex environment publication.
+
+## Milestone 4 launch candidate
+
+Production launch is pending external access, not declared complete. See [launch runbook](docs/launch-runbook.md) for exact evidence and the safe Vercel release sequence. Vercel config targets Next.js/Node 24 in Frankfurt and keeps automatic Git deployments disabled until live acceptance. Preview origin may use trusted Vercel deployment metadata; Production requires its explicit HTTPS canonical URL.
+
+New checks: `npm run test:operations`, `npm run launch:preflight`, and `LIVE_BASE_URL=<verified HTTPS origin> npm run launch:smoke`. Preflight/smoke return exit 2 when prerequisites are missing. The Vercel auth/write Firewall rule IDs in .env.example are required in Production/Preview runtime; missing/not-found/unavailable rules deny writes rather than bypass protection. Logout remains available. /api/health is liveness; /api/ready is a minimal backend/configuration readiness signal, not full live acceptance. Neither endpoint exposes credentials or records. Existing fixture tests remain explicitly local.

@@ -1,4 +1,7 @@
 "use server";
+import { guardAction } from "@/lib/operations/abuse";
+import { applicationOrigin } from "@/lib/operations/config";
+import { operationLog } from "@/lib/operations/log";
 import { Account, ID } from "node-appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -15,6 +18,7 @@ import { validEmail, validName } from "@/lib/validation";
 import { validId } from "@/lib/appwrite/policy";
 const value = (f: FormData, key: string) => String(f.get(key) ?? "");
 export async function setLocale(form: FormData) {
+  await guardAction("write");
   const locale = value(form, "locale") === "ru" ? "ru" : "kk";
   (await cookies()).set("city-locale", locale, {
     httpOnly: true,
@@ -40,6 +44,7 @@ export async function setLocale(form: FormData) {
   revalidatePath("/", "layout");
 }
 export async function authenticate(form: FormData) {
+  await guardAction("auth");
   const signup = value(form, "mode") === "signup",
     target = signup ? "/sign-up" : "/sign-in";
   if (!appwriteConfig()) redirect(target + "?error=config");
@@ -102,6 +107,7 @@ export async function authenticate(form: FormData) {
   } catch {
     failed = true;
   }
+  operationLog("auth_attempt", failed ? "failed" : "success", "auth");
   if (failed) redirect(target + "?error=auth");
   revalidatePath("/", "layout");
   redirect(signup ? "/onboarding" : "/feed");
@@ -118,6 +124,7 @@ export async function signOut() {
   redirect("/sign-in");
 }
 export async function onboard(form: FormData) {
+  await guardAction("write");
   const { service } = await requireService();
   const locale = value(form, "locale") === "ru" ? "ru" : "kk";
   try {
@@ -141,6 +148,7 @@ export async function onboard(form: FormData) {
   redirect("/feed");
 }
 export async function membership(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   const id = value(form, "community");
   try {
@@ -152,6 +160,7 @@ export async function membership(form: FormData) {
   revalidatePath("/", "layout");
 }
 export async function updateProfile(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   try {
     await service.updateProfile(
@@ -175,9 +184,14 @@ export async function updateProfile(form: FormData) {
   revalidatePath("/", "layout");
 }
 export async function resendVerification() {
+  await guardAction("auth");
   const { account } = await requireUser();
-  const site = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!site) redirect("/profile?error=config");
+  let site: string;
+  try {
+    site = applicationOrigin(process.env);
+  } catch {
+    redirect("/profile?error=config");
+  }
   try {
     await account.createVerification({
       url: new URL("/auth/confirm", site).toString(),
@@ -188,6 +202,7 @@ export async function resendVerification() {
   redirect("/profile?message=verify");
 }
 export async function savePost(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   let id = "";
   try {
@@ -203,6 +218,7 @@ export async function savePost(form: FormData) {
   redirect("/posts/" + id);
 }
 export async function deletePost(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   try {
     await service.deletePost(value(form, "post"));
@@ -213,6 +229,7 @@ export async function deletePost(form: FormData) {
   redirect("/feed");
 }
 export async function saveComment(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   const pid = value(form, "post");
   if (!validId(pid)) redirect("/feed");
@@ -227,6 +244,7 @@ export async function saveComment(form: FormData) {
   redirect("/posts/" + pid);
 }
 export async function deleteComment(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   const pid = value(form, "post");
   if (!validId(pid)) redirect("/feed");
@@ -239,6 +257,7 @@ export async function deleteComment(form: FormData) {
   redirect("/posts/" + pid);
 }
 export async function reportPost(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   const pid = value(form, "post");
   if (!validId(pid)) redirect("/feed");
@@ -251,6 +270,7 @@ export async function reportPost(form: FormData) {
 }
 
 export async function resolveReport(form: FormData) {
+  await guardAction("write");
   const { service } = await requireResident();
   try {
     await service.resolveReport(value(form, "report"), value(form, "decision"));

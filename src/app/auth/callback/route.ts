@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { applicationOrigin } from "@/lib/operations/config";
 export function GET() {
-  return NextResponse.redirect(
-    new URL(
-      "/sign-in?error=verification",
-      process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-    ),
-  );
+  try {
+    return NextResponse.redirect(
+      new URL("/sign-in?error=verification", applicationOrigin(process.env)),
+    );
+  } catch {
+    return Response.json({ status: "unavailable" }, { status: 503 });
+  }
 }

@@ -214,3 +214,17 @@ test("post and comment CRUD (Appwrite fixture)", async ({ page }, info) => {
   await page.goto(url);
   await expect(page.locator("main").getByRole("status")).toBeVisible();
 });
+test("health/readiness expose status only and apply security headers (local fixture)", async ({
+  request,
+}) => {
+  const health = await request.get("/api/health");
+  expect(health.status()).toBe(200);
+  expect(await health.json()).toEqual({ status: "ok" });
+  expect(health.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(health.headers()["x-frame-options"]).toBe("DENY");
+  expect(health.headers()["x-powered-by"]).toBeUndefined();
+  const ready = await request.get("/api/ready");
+  expect(ready.status()).toBe(200);
+  expect(await ready.json()).toEqual({ status: "ready" });
+  expect(ready.headers()["cache-control"]).toContain("no-store");
+});

@@ -5,3 +5,6 @@ node_modules/
 *.tsbuildinfo
 playwright-report/
 test-results/
+.vercel/
+.vercel-cli/
+launch-artifacts/

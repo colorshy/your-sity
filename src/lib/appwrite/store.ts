@@ -1,3 +1,4 @@
+import { providerCall } from "./provider-boundary";
 import { validId } from "./policy";
 import { Query, type TablesDB } from "node-appwrite";
 import type { Base, Filter, Page, Repository, Rows, Table } from "./types";
@@ -39,12 +40,14 @@ export class AppwriteRepository implements Repository {
     try {
       return this.normalize(
         table,
-        await this.db.getRow({
-          databaseId: this.databaseId,
-          tableId: table,
-          rowId: id,
-          transactionId: this.transactionId,
-        }),
+        await providerCall(() =>
+          this.db.getRow({
+            databaseId: this.databaseId,
+            tableId: table,
+            rowId: id,
+            transactionId: this.transactionId,
+          }),
+        ),
       );
     } catch (error) {
       if (
@@ -74,12 +77,14 @@ export class AppwriteRepository implements Repository {
     );
     if (page.desc)
       queries.push(Query.orderDesc("$createdAt"), Query.orderDesc("$id"));
-    const result = await this.db.listRows({
-      databaseId: this.databaseId,
-      tableId: table,
-      queries,
-      transactionId: this.transactionId,
-    });
+    const result = await providerCall(() =>
+      this.db.listRows({
+        databaseId: this.databaseId,
+        tableId: table,
+        queries,
+        transactionId: this.transactionId,
+      }),
+    );
     return result.rows.map((r) => this.normalize(table, r));
   }
   async create<K extends Table>(
@@ -90,14 +95,16 @@ export class AppwriteRepository implements Repository {
     if (!validId(id)) throw new Error("Invalid row ID");
     return this.normalize(
       table,
-      await this.db.createRow({
-        databaseId: this.databaseId,
-        tableId: table,
-        rowId: id,
-        data: this.encode(table, data),
-        permissions: [],
-        transactionId: this.transactionId,
-      }),
+      await providerCall(() =>
+        this.db.createRow({
+          databaseId: this.databaseId,
+          tableId: table,
+          rowId: id,
+          data: this.encode(table, data),
+          permissions: [],
+          transactionId: this.transactionId,
+        }),
+      ),
     );
   }
   async update<K extends Table>(
@@ -108,40 +115,48 @@ export class AppwriteRepository implements Repository {
     if (!validId(id)) throw new Error("Invalid row ID");
     return this.normalize(
       table,
-      await this.db.updateRow({
-        databaseId: this.databaseId,
-        tableId: table,
-        rowId: id,
-        data: this.encode(table, data),
-        permissions: [],
-        transactionId: this.transactionId,
-      }),
+      await providerCall(() =>
+        this.db.updateRow({
+          databaseId: this.databaseId,
+          tableId: table,
+          rowId: id,
+          data: this.encode(table, data),
+          permissions: [],
+          transactionId: this.transactionId,
+        }),
+      ),
     );
   }
   async delete(table: Table, id: string) {
     if (!validId(id)) throw new Error("Invalid row ID");
-    await this.db.deleteRow({
-      databaseId: this.databaseId,
-      tableId: table,
-      rowId: id,
-      transactionId: this.transactionId,
-    });
+    await providerCall(() =>
+      this.db.deleteRow({
+        databaseId: this.databaseId,
+        tableId: table,
+        rowId: id,
+        transactionId: this.transactionId,
+      }),
+    );
   }
   async transaction<T>(work: (repo: Repository) => Promise<T>): Promise<T> {
     if (this.transactionId) return work(this);
-    const tx = await this.db.createTransaction({ ttl: 60 });
+    const tx = await providerCall(() => this.db.createTransaction({ ttl: 60 }));
     try {
       const result = await work(
         new AppwriteRepository(this.db, this.databaseId, this.schemas, tx.$id),
       );
-      await this.db.updateTransaction({ transactionId: tx.$id, commit: true });
+      await providerCall(() =>
+        this.db.updateTransaction({ transactionId: tx.$id, commit: true }),
+      );
       return result;
     } catch (error) {
       try {
-        await this.db.updateTransaction({
-          transactionId: tx.$id,
-          rollback: true,
-        });
+        await providerCall(() =>
+          this.db.updateTransaction({
+            transactionId: tx.$id,
+            rollback: true,
+          }),
+        );
       } catch {}
       throw error;
     }

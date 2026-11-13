@@ -154,3 +154,29 @@ ChatGPT should inspect/reconcile the actual backend against BACKEND_REQUIREMENTS
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test`: **24 passed, 0 failed** across desktop, tablet and mobile, against the isolated Appwrite SDK fixture. No live Appwrite acceptance result is implied.
 - No live Appwrite database/table/column/index/permission or row was created/modified by Codex. No deployment was triggered. The connected ChatGPT backend operator owns the precise follow-up in BACKEND_REQUIREMENTS.md.
 - GitHub commit/push and any PR attempt are reported in the final task response. Existing main, milestone-1/2 and Supabase feature branches are preserved. Secrets remain outside Git.
+
+## Milestone 4 — production launch candidate (2026-11-13)
+
+Dedicated branch `feat/milestone-4-launch` starts from verified Appwrite commit `4ffe859e12fa16015893db7ee520014872f84c08`. No unrelated branch/default/history changes. Application architecture, backend contract, dependencies, environment files and existing tests were audited.
+
+### Executed work
+
+- Confirmed no Appwrite/Vercel tools, no injected server/token variables, no Vercel auth/project binding and no actual Appwrite key in local env names. HTTPS probes to both official services failed at cloud-proxy CONNECT (403), not an authenticated team/SSO response. No live resources were recreated or modified.
+- Installed Vercel CLI 65.15.0 through npm exec. Corrected its global-config-directory failure using the supported flag. whoami reports Logged out. Ordinary dry inspection and temporary+dry both require login. Official login workflow and a supported Node inherited-proxy diagnostic retry fail before yielding an owner approval URL. No deployment/URL/account/team/project discovery was completed or falsely claimed.
+- Saved exact official API host and secure credential requirements in the environment draft, preserving existing configuration. Runtime observations still show no secrets/variables/custom hosts; saved draft does not grant access. No secret values were printed, copied into Git or passed on a deployment command line.
+- Added Vercel Next.js/Frankfurt/Node 24 configuration, explicit build dev dependencies, upload exclusions and disabled Git auto-deployment pending acceptance. A CI workflow runs local/fixture checks without deployment credentials; its remote execution is not assumed passed.
+- Added production rate protection using official @vercel/firewall SDK, with fail-closed missing/not-found/blocked/timeout behavior and a platform-derived destination host. Logout intentionally remains available. Actual project-level rules require authorized Vercel setup and live verification.
+- Added HTTPS canonical-origin validation and trusted Preview metadata fallback; minimal health/readiness endpoints; safe enumerated JSON logs; backend error sanitization; security response headers; non-deploying preflight/read-only live smoke tools.
+- Added docs/launch-runbook.md and docs/launch-status.md with exact release sequence, blockers and no-duplicate-project/no-unverified-promotion constraints. Updated backend handoff and env template. The next step is external authorization, not routine founder engineering.
+
+### Verification and remaining scope
+
+Local production server returned /api/health HTTP 200 and /api/ready HTTP 503 with missing configuration, with expected no-store/security headers and no credential details. Production refusal is expected and not a live readiness success. Launch preflight/live smoke exit 2 as blocked; no real Auth, two-user ownership, Appwrite permission, actual Firewall or deployed responsive test has run. Full command totals are appended after completion.
+
+Milestone 4 remains **incomplete** until a real preview URL, real backend acceptance and safe production promotion are verified. No Vercel deployment URL, project creation, backend mutation or production promotion is claimed. Authorized credentials/network access remain necessary; see launch-status.md for the smallest outside action.
+
+### Final Milestone 4 local verification
+
+Clean npm ci and production-mode npm ci --include=dev passed. ESLint, TypeScript and production build passed. Final suites: **22/22 security**, **11/11 operations**, **27/27 browser fixture tests**. One operations-test fixture initially lacked newly required trusted platform metadata; corrected the fixture and reran the affected checks. No current local failures remain. Live Appwrite, actual Vercel Firewall, remote deployment and two-user acceptance remain blocked/unrun, not passed.
+
+No actual Vercel project/deployment was created; correct owner/team and any existing project cannot be discovered while logged out and network-blocked. The smallest remaining outside action is secure Vercel/Appwrite authorization plus application of outbound permissions; routine engineering resumes afterward from docs/launch-runbook.md. GitHub commit/push and PR outcome are reported in the task response; no default-branch changes or force pushes.

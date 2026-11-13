@@ -1,3 +1,4 @@
+import { providerCall } from "./provider-boundary";
 import "server-only";
 import { configureTransport } from "./transport";
 configureTransport();
@@ -46,7 +47,9 @@ export const getRepository = cache(async () => {
   const schemas = {} as Record<(typeof tables)[number], Schema>;
   const metadata = await Promise.all(
     tables.map((table) =>
-      db.getTable({ databaseId: config.database, tableId: table }),
+      providerCall(() =>
+        db.getTable({ databaseId: config.database, tableId: table }),
+      ),
     ),
   );
   tables.forEach((table, i) => {
