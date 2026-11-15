@@ -4,17 +4,17 @@ Starting source: `feat/mvp-3-multiuser` at `5c755095867b119f69854739657b83165b4a
 
 ## Observed status
 
-| Area                                                                 | Status                       | Evidence / dependency                                                                                                |
-| -------------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Appwrite migration                                                   | BLOCKED                      | No Appwrite tools, APPWRITE_API_KEY or explicit operator approval. No cloud schema operation attempted.              |
-| Live schema/index/permission readback                                | BLOCKED                      | No live metadata snapshot/read access. The supplied seven-table baseline is not a new readback.                      |
-| Exact cloud migration plan                                           | BLOCKED                      | Existing offline planner requires the operator's complete actual metadata. No snapshot was fabricated from fixtures. |
-| Immutable Vercel Preview                                             | BLOCKED                      | No Vercel tool/VERCEL_TOKEN, verified deployment URL or deployment SHA. No deployment or project change attempted.   |
-| Real registration/login/onboarding/session/profile                   | BLOCKED                      | No authorized Preview or supplied A/B credentials. Local Auth fixture results are separate.                          |
-| Real shared social operations / feeds                                | BLOCKED                      | Same Preview/schema/account dependencies; no backend fallback or localStorage substitute used.                       |
-| Live moderator/private-row/ownership/concurrency/Firewall acceptance | BLOCKED                      | No authorized moderator/Preview/backend. Local denial/conflict/limiter tests do not prove provider enforcement.      |
-| Local automated verification                                         | Recorded in docs/progress.md | Executed locally, never counted as hosted Appwrite evidence.                                                         |
-| Production                                                           | NOT STARTED                  | No deployment, promotion, merge, schema permission change or data mutation.                                          |
+| Area                                                                 | Status              | Evidence / dependency                                                                                                                              |
+| -------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Appwrite migration                                                   | BLOCKED             | No Appwrite tools, APPWRITE_API_KEY or explicit operator approval. No cloud schema operation attempted.                                            |
+| Live schema/index/permission readback                                | BLOCKED             | No live metadata snapshot/read access. The supplied seven-table baseline is not a new readback.                                                    |
+| Exact cloud migration plan                                           | BLOCKED             | Existing offline planner requires the operator's complete actual metadata. No snapshot was fabricated from fixtures.                               |
+| Immutable Vercel Preview                                             | BLOCKED             | No Vercel tool/VERCEL_TOKEN, verified deployment URL or deployment SHA. No deployment or project change attempted.                                 |
+| Real registration/login/onboarding/session/profile                   | BLOCKED             | No authorized Preview or supplied A/B credentials. Local Auth fixture results are separate.                                                        |
+| Real shared social operations / feeds                                | BLOCKED             | Same Preview/schema/account dependencies; no backend fallback or localStorage substitute used.                                                     |
+| Live moderator/private-row/ownership/concurrency/Firewall acceptance | BLOCKED             | No authorized moderator/Preview/backend. Local denial/conflict/limiter tests do not prove provider enforcement.                                    |
+| Local automated verification                                         | PASSED (local only) | Lint/types/build; authorization 27/27, social 28/28, operations 12/12, deployment 6/6, migration 5/5, browser 60/60. Not hosted Appwrite evidence. |
+| Production                                                           | NOT STARTED         | No deployment, promotion, merge, schema permission change or data mutation.                                                                        |
 
 The environment check used presence flags only: APPWRITE_API_KEY, VERCEL_TOKEN, BETA_BASE_URL, BETA_COMMIT, supplied A/B/moderator emails/passwords and BETA_ALLOW_WRITES were absent. No secret values were printed or requested in chat. Appwrite preflight, snapshot planner, Vercel preflight and live runner all exited 2/BLOCKED before network requests. Saved configuration on some external Vercel account is not inferred absent; it simply cannot be inspected from this session.
 
