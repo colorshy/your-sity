@@ -1,5 +1,6 @@
 import { posts, type DemoPost } from "./demo";
 import type { DemoState } from "./demo-store";
+import { rankForYou, postTimestamp, comparePostIds } from "./recommendations";
 export type DemoComment = {
   id: string;
   post: string;
@@ -79,9 +80,8 @@ export function visiblePosts(
     now?: number;
   },
 ) {
-  const now =
-    options.now ??
-    Math.max(0, ...all.map((p) => Date.parse(p.createdAt || "") || 0));
+  const now = options.now ?? Date.now();
+  const query = options.query.trim().toLowerCase();
   const filtered = all.filter(
     (p) =>
       !isHidden(state, authorId(p)) &&
@@ -89,20 +89,12 @@ export function visiblePosts(
       (!options.neighborhood || p.neighborhood === options.neighborhood) &&
       (options.kind === "all" || p.kind === options.kind) &&
       `${p.titleRu} ${p.titleKk} ${p.bodyRu} ${p.bodyKk}`
-        .toLocaleLowerCase()
-        .includes(options.query.trim().toLocaleLowerCase()),
+        .toLowerCase()
+        .includes(query),
   );
-  const timestamp = (p: DemoPost) => Date.parse(p.createdAt || "") || 0;
-  const score = (p: DemoPost) =>
-    (state.joined.includes(p.community) ? 20 : 0) +
-    (state.following.includes(authorId(p)) ? 8 : 0) +
-    Math.max(0, 12 - (now - timestamp(p)) / 3600000) +
-    Number(state.likes.includes(p.id)) * 2 +
-    state.comments.filter((c) => c.post === p.id && !c.deleted).length;
-  return filtered.sort((a, b) =>
-    options.mode === "explore"
-      ? score(b) - score(a) || timestamp(b) - timestamp(a)
-      : timestamp(b) - timestamp(a),
+  if (options.mode === "explore") return rankForYou(state, filtered, now);
+  return filtered.sort(
+    (a, b) => postTimestamp(b) - postTimestamp(a) || comparePostIds(a, b),
   );
 }
 export function profileFor(state: DemoState, id: string, lang: "ru" | "kk") {
