@@ -7,6 +7,9 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/feed/:path*",
+    "/saved",
+    "/notifications",
+    "/people/:path*",
     "/moderation/:path*",
     "/communities/:path*",
     "/profile/:path*",

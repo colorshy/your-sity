@@ -192,7 +192,9 @@ test("post and comment CRUD (Appwrite fixture)", async ({ page }, info) => {
     has: page.locator("p").filter({ hasText: /^Comment original$/ }),
   });
   await comment.getByText("Өңдеу", { exact: true }).click();
-  await comment.locator("textarea").fill("Comment edited");
+  await comment
+    .getByRole("textbox", { name: "Мәтін", exact: true })
+    .fill("Comment edited");
   await comment.getByRole("button", { name: "Сақтау", exact: true }).click();
   await expect(
     page.locator("p").filter({ hasText: /^Comment edited$/ }),

@@ -62,10 +62,12 @@ export async function PostList({
     <>
       {posts.map((p) => (
         <article key={p.id} className="post">
-          <strong>
-            {authors.find((a) => a.id === p.author_id)?.display_name ??
-              t("Тұрғын", "Житель")}
-          </strong>
+          <Link href={"/people/" + p.author_id}>
+            <strong>
+              {authors.find((a) => a.id === p.author_id)?.display_name ??
+                t("Тұрғын", "Житель")}
+            </strong>
+          </Link>
           <p className="post-body" style={{ whiteSpace: "pre-wrap" }}>
             {p.body}
           </p>

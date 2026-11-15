@@ -1,11 +1,27 @@
 import type { Table } from "./types";
 import { safeTablePolicy } from "./policy";
 export const fields: Record<Table, Record<string, string[]>> = {
+  post_likes: { user_id: ["user_id"], post_id: ["post_id"] },
+  bookmarks: { user_id: ["user_id"], post_id: ["post_id"] },
+  connections: {
+    user_id: ["user_id"],
+    target_id: ["target_id"],
+    kind: ["kind"],
+  },
+  notifications: {
+    recipient_id: ["recipient_id"],
+    actor_id: ["actor_id"],
+    kind: ["kind"],
+    post_id: ["post_id"],
+    comment_id: ["comment_id"],
+    is_read: ["is_read"],
+  },
   cities: {
     name_kk: ["name_kk", "nameKk", "name_kz"],
     name_ru: ["name_ru", "nameRu"],
   },
   profiles: {
+    social_version: ["social_version"],
     user_id: ["user_id", "userId"],
     display_name: ["display_name", "displayName", "name"],
     city_id: ["city_id", "cityId"],
@@ -28,17 +44,26 @@ export const fields: Record<Table, Record<string, string[]>> = {
     status: ["status", "moderation_status", "moderationStatus"],
   },
   comments: {
+    parent_id: ["parent_id"],
     author_id: ["author_id", "authorId", "user_id", "userId"],
     post_id: ["post_id", "postId"],
     body: ["body", "content", "text"],
     status: ["status", "moderation_status", "moderationStatus"],
   },
   reports: {
+    comment_id: ["comment_id"],
     reporter_id: ["reporter_id", "reporterId", "user_id", "userId"],
     post_id: ["post_id", "postId"],
     reason: ["reason"],
     status: ["status"],
   },
+};
+export const uniqueFields: Partial<Record<Table, string[]>> = {
+  profiles: ["user_id"],
+  community_memberships: ["user_id", "community_id"],
+  post_likes: ["user_id", "post_id"],
+  bookmarks: ["user_id", "post_id"],
+  connections: ["user_id", "target_id", "kind"],
 };
 export const tables = Object.keys(fields) as Table[];
 export type Column = {
@@ -89,7 +114,7 @@ export function inspectSchema(
       !c ||
       c.status !== "available" ||
       c.array ||
-      (field === "onboarded"
+      (["onboarded", "is_read"].includes(field)
         ? c.type !== "boolean"
         : ![
             "string",
@@ -101,6 +126,17 @@ export function inspectSchema(
           ].includes(c.type))
     )
       throw new Error("Incompatible column: " + table + "." + field);
+    if (
+      ((table === "profiles" && field === "social_version") ||
+        (table === "comments" && field === "parent_id") ||
+        (table === "reports" && field === "comment_id") ||
+        (table === "notifications" &&
+          ["post_id", "comment_id"].includes(field))) &&
+      c.required
+    )
+      throw new Error(
+        "Nullable column must be optional: " + table + "." + field,
+      );
     const capacity =
       c.size ??
       (
@@ -119,9 +155,11 @@ export function inspectSchema(
           ? 80
           : field === "reason"
             ? 1000
-            : field.endsWith("_id")
+            : field.endsWith("_id") || field === "social_version"
               ? 36
-              : 0;
+              : field === "kind"
+                ? 16
+                : 0;
     if (minimum && capacity < minimum)
       throw new Error("Content column too short: " + table + "." + field);
     if (field === "status" && c.elements) {
@@ -142,12 +180,7 @@ export function inspectSchema(
       throw new Error("Unmapped required column: " + table + "." + c.key);
   }
 
-  const unique =
-    table === "profiles"
-      ? ["user_id"]
-      : table === "community_memberships"
-        ? ["user_id", "community_id"]
-        : [];
+  const unique = uniqueFields[table] ?? [];
   if (
     unique.length &&
     !metadata.indexes?.some(

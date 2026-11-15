@@ -3155,3 +3155,43 @@ main.mvp-main {
     }
   }
 }
+
+/* Shared authenticated beta controls; demo layout remains independent. */
+.beta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-block: 1rem;
+}
+.beta-actions p {
+  margin: 0;
+}
+.beta-comment {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.beta-reply-context {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+body > .topbar {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 72px;
+  gap: 0.75rem;
+}
+body > .topbar .header-actions {
+  flex-wrap: wrap;
+}
+body > main {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  body > .topbar {
+    padding: 1rem;
+  }
+  body > .topbar .header-actions {
+    gap: 0.75rem;
+  }
+}

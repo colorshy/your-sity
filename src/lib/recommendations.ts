@@ -1,7 +1,23 @@
-import type { DemoPost } from "./demo";
-import type { DemoState } from "./demo-store";
-
-// These are intentionally modest, auditable demo weights, not ML predictions.
+/** Shared structural contract: no browser, demo fixture or backend dependency. */
+export type RecommendationPost = {
+  id: string;
+  community: string;
+  authorId?: string;
+  own?: boolean;
+  neighborhood?: string;
+  createdAt?: string;
+};
+export type RecommendationState = {
+  joined: string[];
+  following: string[];
+  likes: string[];
+  saved: string[];
+  blocked: string[];
+  muted: string[];
+  comments: { post: string; authorId: string; deleted?: boolean }[];
+  profile: { neighborhood: string };
+};
+// These are intentionally modest, auditable weights, not ML predictions.
 export const RECOMMENDATION_WEIGHTS = {
   joinedCommunity: 14,
   followedAuthor: 10,
@@ -15,18 +31,19 @@ export const RECOMMENDATION_WEIGHTS = {
 } as const;
 
 /** Missing/invalid dates sort last, including dates before the Unix epoch. */
-export function postTimestamp(post: DemoPost): number {
+export function postTimestamp(post: RecommendationPost): number {
   const parsed = Date.parse(post.createdAt || "");
   return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
-export const comparePostIds = (a: DemoPost, b: DemoPost) =>
+export const comparePostIds = (a: RecommendationPost, b: RecommendationPost) =>
   a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
-const author = (post: DemoPost) => (post.own ? "me" : post.authorId || post.id);
+const author = (post: RecommendationPost) =>
+  post.own ? "me" : post.authorId || post.id;
 
 // Build membership indexes once per feed, rather than scanning comments per post.
-function signals(state: DemoState) {
+function signals(state: RecommendationState) {
   return {
     joined: new Set(state.joined),
     following: new Set(state.following),
@@ -44,7 +61,7 @@ function signals(state: DemoState) {
 
 function score(
   context: ReturnType<typeof signals>,
-  post: DemoPost,
+  post: RecommendationPost,
   now: number,
 ) {
   const weights = RECOMMENDATION_WEIGHTS;
@@ -72,25 +89,25 @@ function score(
   );
 }
 
-/** Score only interactions actually saved in this browser. Sample totals are ignored. */
-export function recommendationScore(
-  state: DemoState,
-  post: DemoPost,
+/** Score only interactions actually provided by the verified caller. Sample totals are ignored. */
+export function recommendationScore<P extends RecommendationPost>(
+  state: RecommendationState,
+  post: P,
   now: number,
 ): number {
   return score(signals(state), post, now);
 }
 
 /**
- * Deterministic For You demo ranking, with light community/author diversity.
+ * Deterministic For You ranking, with light community/author diversity.
  * Callers apply city and search filters first; mute/block is also enforced here.
  * City and joined-community feeds intentionally bypass this function.
  */
-export function rankForYou(
-  state: DemoState,
-  posts: readonly DemoPost[],
+export function rankForYou<P extends RecommendationPost>(
+  state: RecommendationState,
+  posts: readonly P[],
   now: number,
-): DemoPost[] {
+): P[] {
   const indexed = signals(state);
   const seen = new Set<string>();
   const candidates = posts

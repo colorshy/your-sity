@@ -31,3 +31,9 @@ Reply parents use stable IDs; deleting an owned parent with children leaves a to
 Notifications are a bounded (100-entry) local activity journal with a sample flag, explicit event type, read state and local target. There is no polling, background generation or real delivery. Local report creation never calls Appwrite. Mute keeps follow state; block also removes the local follow. Both can be reversed from the own profile.
 
 The city catalog uses broad administrative districts and does not request location permissions. Sample district assignments are fictional. Shymkent timestamps use an explicit UTC+05 clock and typed RU/KZ month names, avoiding server/browser ICU differences that caused a hydration error during testing. Fixed sample dates remain visibly dated. The city authority reference is https://www.gov.kz/memleket/entities/shymkent?lang=ru; a fresh fetch was denied (403) by this session's network policy, so no live authority-page verification is claimed.
+
+## MVP 3 shared social layer
+
+CityService owns all shared social operations and privacy checks. New Appwrite rows store likes, private bookmarks, account connections and recipient-owned notifications; nullable comment parents preserve existing threads and reports can target comments. Social writes and notifications use the existing fail-closed transaction adapter. Authenticated views never import demo fixtures or use browser persistence. The pure recommendation function now accepts minimal structural signal/post types; its demo callers retain their previous API and storage.
+
+See product/MULTIUSER_BETA.md for visibility rules, bounded beta datasets, migration/live-acceptance gates and the separate local/live test runners. Server-private table policy remains mandatory; the existing Vercel project and production rate limiter configuration are unchanged.

@@ -80,3 +80,7 @@ Do **not** ship machine learning, vector embeddings, trackers, third-party perso
 - Diversity minimizes author/community streak violations before discovery. When both caps cannot be satisfied together, prefer breaking one over breaking neither. Discovery aims for one unfamiliar community in the first five, but cannot override safer upstream filters or a more diverse candidate. Exhausted alternatives can still produce streaks.
 - No storage migration: `your-city-demo-v2`, user posts/comments and existing Appwrite routes are unchanged. All signals remain local to one browser. No GPS, trackers, external AI, seed popularity or backend writes were added.
 - Indexing is linear in saved signals; score sorting is O(n log n), greedy diversity remains O(n²) for the small local demo feed. A future server feed needs bounded candidate retrieval/pagination and measured relevance, plus verified multi-user persistence, moderation exclusions and access controls before reusing this algorithm.
+
+## MVP 3 reuse
+
+The pure ranking module accepts structural post/signal contracts without importing browser storage or demo fixtures. Authenticated CityService supplies shared Appwrite joins/follows/likes/bookmarks/owned published comments and filters privacy/moderation before ranking. The demo still supplies its existing browser-local state. See MULTIUSER_BETA.md for the bounded server candidate window and live acceptance gate; no hosted validation is implied by this reuse.

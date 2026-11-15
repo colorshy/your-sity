@@ -1,3 +1,8 @@
+import { Thread } from "@/components/backend/thread";
+import {
+  PostInteractions,
+  AccountConnections,
+} from "@/components/backend/interactions";
 import { notFound } from "next/navigation";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { requireResident } from "@/lib/auth";
@@ -7,13 +12,7 @@ import { Shell, Configuration, Notice } from "@/components/backend/shell";
 import { PostList } from "@/components/backend/data";
 import { Submit } from "@/components/backend/submit";
 import { Pagination, pageNumber } from "@/components/backend/pagination";
-import {
-  savePost,
-  deletePost,
-  saveComment,
-  deleteComment,
-  reportPost,
-} from "@/app/actions";
+import { savePost, deletePost, saveComment, reportPost } from "@/app/actions";
 export default async function Page({
   params,
   searchParams,
@@ -45,6 +44,10 @@ export default async function Page({
       <h1>{t("Талқылау", "Обсуждение")}</h1>
       <Notice {...query} />
       <PostList posts={[post]} authors={authors} />
+      {post.status === "published" && (
+        <PostInteractions service={service} postId={post.id} />
+      )}
+      <AccountConnections service={service} targetId={post.author_id} />
       {post.status !== "published" && (
         <p role="status">
           {t(
@@ -82,47 +85,13 @@ export default async function Page({
         </section>
       )}
       <h2>{t("Пікірлер", "Комментарии")}</h2>
-      {comments.length ? (
-        comments.slice(0, 20).map((c) => (
-          <article className="post" key={c.id}>
-            <strong>
-              {authors.find((a) => a.id === c.author_id)?.display_name ??
-                t("Тұрғын", "Житель")}
-            </strong>
-            <p style={{ whiteSpace: "pre-wrap" }}>{c.body}</p>
-            {c.author_id === user.id && (
-              <>
-                <details>
-                  <summary>{t("Өңдеу", "Редактировать")}</summary>
-                  <form action={saveComment}>
-                    <input type="hidden" name="post" value={post.id} />
-                    <input type="hidden" name="comment" value={c.id} />
-                    <label>
-                      {t("Мәтін", "Текст")}
-                      <textarea
-                        name="body"
-                        required
-                        maxLength={2000}
-                        defaultValue={c.body}
-                      />
-                    </label>
-                    <Submit>{t("Сақтау", "Сохранить")}</Submit>
-                  </form>
-                </details>
-                <form action={deleteComment}>
-                  <input type="hidden" name="post" value={post.id} />
-                  <input type="hidden" name="comment" value={c.id} />
-                  <Submit>{t("Пікірді жою", "Удалить комментарий")}</Submit>
-                </form>
-              </>
-            )}
-          </article>
-        ))
-      ) : (
-        <p className="empty">
-          {t("Әзірге пікірлер жоқ", "Пока нет комментариев")}
-        </p>
-      )}
+      <Thread
+        comments={comments.slice(0, 20)}
+        authors={authors}
+        postId={post.id}
+        userId={user.id}
+        joined={joined}
+      />
       <Pagination
         page={page}
         more={comments.length > 20}

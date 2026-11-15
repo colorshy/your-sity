@@ -26,14 +26,19 @@ export default async function Page({
         reports.slice(0, 20).map((r) => (
           <article className="post" key={r.id}>
             <p>{r.reason}</p>
-            <p>{r.post_id}</p>
+            <p>
+              {r.post_id}
+              {r.comment_id ? " / " + r.comment_id : ""}
+            </p>
             <form action={resolveReport}>
               <input type="hidden" name="report" value={r.id} />
               <label>
                 {t("Шешім", "Решение")}
                 <select name="decision">
                   <option value="hide">
-                    {t("Жазбаны жасыру", "Скрыть публикацию")}
+                    {r.comment_id
+                      ? t("Пікірді жасыру", "Скрыть комментарий")
+                      : t("Жазбаны жасыру", "Скрыть публикацию")}
                   </option>
                   <option value="dismiss">
                     {t("Шағымды қабылдамау", "Отклонить жалобу")}

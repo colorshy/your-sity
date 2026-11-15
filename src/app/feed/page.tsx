@@ -15,8 +15,13 @@ export default async function Page({
   const { t } = await translator();
   const params = await searchParams,
     page = pageNumber(params.page),
-    mine = params.mode !== "explore";
-  const posts = await service.posts(mine ? "mine" : "explore", page);
+    mode =
+      params.mode === "mine"
+        ? "mine"
+        : params.mode === "city" || params.mode === "explore"
+          ? "city"
+          : "for-you";
+  const posts = await service.posts(mode, page);
   return (
     <Shell>
       <h1>{t("Қала лентасы", "Лента города")}</h1>
@@ -24,15 +29,24 @@ export default async function Page({
       <Link className="primary" href="/create">
         {t("Жазба жасау", "Создать публикацию")}
       </Link>
-      <nav className="feed-tabs">
-        <Link aria-current={mine ? "page" : undefined} href="/feed">
-          {t("Менің қауымдастықтарым", "Мои сообщества")}
+      <nav className="feed-tabs" aria-label={t("Лента түрі", "Режим ленты")}>
+        <Link
+          aria-current={mode === "for-you" ? "page" : undefined}
+          href="/feed"
+        >
+          {t("Сіз үшін", "Для тебя")}
         </Link>
         <Link
-          aria-current={!mine ? "page" : undefined}
-          href="/feed?mode=explore"
+          aria-current={mode === "city" ? "page" : undefined}
+          href="/feed?mode=city"
         >
-          {t("Қаланы шолу", "Весь город")}
+          {t("Қала", "Город")}
+        </Link>
+        <Link
+          aria-current={mode === "mine" ? "page" : undefined}
+          href="/feed?mode=mine"
+        >
+          {t("Менің қауымдастықтарым", "Мои сообщества")}
         </Link>
       </nav>
       <PostList
@@ -42,7 +56,7 @@ export default async function Page({
       <Pagination
         page={page}
         more={posts.length > 20}
-        path={"/feed?mode=" + (mine ? "mine" : "explore") + "&page="}
+        path={"/feed?mode=" + mode + "&page="}
       />
     </Shell>
   );

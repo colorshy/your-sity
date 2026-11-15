@@ -21,7 +21,9 @@
     "appwrite:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/launch-preflight.ts",
     "launch:preview": "node --env-file-if-exists=.env.local --import tsx scripts/vercel-preview.ts --deploy-preview",
     "test:deployment": "tsx --test scripts/deployment-target.test.ts",
-    "test:social": "tsx --test scripts/social-demo.test.ts"
+    "test:social": "tsx --test scripts/social-demo.test.ts scripts/multiuser.test.ts",
+    "test:multiuser": "tsx --test scripts/multiuser.test.ts",
+    "test:live": "node --env-file-if-exists=.env.local --import tsx scripts/live-two-user.ts"
   },
   "dependencies": {
     "@vercel/firewall": "^1.2.6",

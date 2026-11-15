@@ -22,6 +22,43 @@ export async function verifyBackend(repo: Repository) {
   const probe = "launch-readiness-probe";
   // Read-only query/index verification. No fake accounts, content, or transactions are created.
   await Promise.all([
+    repo.list("post_likes", [{ field: "user_id", value: probe }], { limit: 1 }),
+    repo.list("post_likes", [{ field: "post_id", value: probe }], { limit: 1 }),
+    repo.list("bookmarks", [{ field: "user_id", value: probe }], {
+      limit: 1,
+      desc: true,
+    }),
+    repo.list("connections", [{ field: "user_id", value: probe }], {
+      limit: 1,
+    }),
+    repo.list(
+      "connections",
+      [
+        { field: "target_id", value: probe },
+        { field: "kind", value: "block" },
+      ],
+      { limit: 1 },
+    ),
+    repo.list("notifications", [{ field: "recipient_id", value: probe }], {
+      limit: 1,
+      desc: true,
+    }),
+    repo.list(
+      "comments",
+      [
+        { field: "author_id", value: probe },
+        { field: "status", value: "published" },
+      ],
+      { limit: 1 },
+    ),
+    repo.list(
+      "comments",
+      [
+        { field: "post_id", value: probe },
+        { field: "status", value: ["published", "deleted"] },
+      ],
+      { limit: 1, desc: true },
+    ),
     repo.list("profiles", [{ field: "user_id", value: probe }], { limit: 1 }),
     repo.list(
       "community_memberships",
