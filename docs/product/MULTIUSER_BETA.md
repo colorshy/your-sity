@@ -45,3 +45,7 @@ Tests create clearly marked disposable content and attempt owner soft-delete cle
 5. Review RU/KZ, 320px devices, accessibility, real content/privacy notices, moderation ownership and account/data retention with the cohort organizer. Begin with a small consenting student cohort only after recording successful live results.
 
 In this session Appwrite server credentials/integration and an authorized live beta URL/accounts were absent. No schema mutation, hosted two-user result, live concurrency result, mail delivery, Firewall enforcement or deployment is claimed. See docs/progress.md for executed local results and GitHub delivery status.
+
+## MVP 3.2 acceptance continuation
+
+Current status and exact operator operations are recorded in [MVP_32_STATUS.md](MVP_32_STATUS.md). The live runner now orders accounts/social → profile/post/feed/block lifecycle → moderator/direct-permission denial. The added lifecycle phase checks post-owner A blocking B, profile persistence, own post edits/deletion and leave/rejoin feed semantics. These live checks require the existing authorized Preview/schema and supplied accounts; no local fixture run certifies them.

@@ -26,12 +26,24 @@ async function account(
     await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   }
   await expect(page).toHaveURL(/\/feed$/);
+  await expect(
+    page.getByRole("heading", { name: /^(Лента города|Қала лентасы)$/ }),
+  ).toBeVisible();
+  // Login restores the saved profile locale; select RU after that server response.
+  if ((await page.locator("html").getAttribute("lang")) === "kk")
+    await page.getByRole("button", { name: "РУС", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
   await page.goto("/communities");
   const card = page
     .locator("article")
     .filter({ has: page.locator('a[href="/communities/events"]') });
   const join = card.getByRole("button", { name: "Вступить", exact: true });
-  if (await join.count()) await join.click();
+  if (await join.count()) {
+    await join.click();
+    await expect(
+      card.getByRole("button", { name: "Выйти", exact: true }),
+    ).toBeVisible();
+  }
 }
 
 test(

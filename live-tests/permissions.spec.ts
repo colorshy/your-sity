@@ -18,6 +18,12 @@ async function login(page: Page, role: "A" | "B" | "MODERATOR") {
     .fill(process.env["BETA_PASSWORD_" + role]!);
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/feed$/);
+  await expect(
+    page.getByRole("heading", { name: /^(Лента города|Қала лентасы)$/ }),
+  ).toBeVisible();
+  if ((await page.locator("html").getAttribute("lang")) === "kk")
+    await page.getByRole("button", { name: "РУС", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru");
 }
 async function submitForeignForm(
   page: Page,

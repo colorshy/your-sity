@@ -9,13 +9,19 @@ export default defineConfig({
   testMatch: [
     "**/tests/multiuser.spec.ts",
     "**/live-tests/permissions.spec.ts",
+    "**/live-tests/lifecycle.spec.ts",
   ],
   projects: [
     { name: "accounts", testMatch: "**/tests/multiuser.spec.ts" },
     {
+      name: "lifecycle",
+      testMatch: "**/live-tests/lifecycle.spec.ts",
+      dependencies: ["accounts"],
+    },
+    {
       name: "permissions",
       testMatch: "**/live-tests/permissions.spec.ts",
-      dependencies: ["accounts"],
+      dependencies: ["lifecycle"],
     },
   ],
   workers: 1,
