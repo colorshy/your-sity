@@ -1,6 +1,6 @@
 import { posts, type DemoPost } from "./demo";
 import type { DemoState } from "./demo-store";
-import { rankForYou } from "./recommendations";
+import { rankForYou, postTimestamp, comparePostIds } from "./recommendations";
 export type DemoComment = {
   id: string;
   post: string;
@@ -81,6 +81,7 @@ export function visiblePosts(
   },
 ) {
   const now = options.now ?? Date.now();
+  const query = options.query.trim().toLowerCase();
   const filtered = all.filter(
     (p) =>
       !isHidden(state, authorId(p)) &&
@@ -88,12 +89,13 @@ export function visiblePosts(
       (!options.neighborhood || p.neighborhood === options.neighborhood) &&
       (options.kind === "all" || p.kind === options.kind) &&
       `${p.titleRu} ${p.titleKk} ${p.bodyRu} ${p.bodyKk}`
-        .toLocaleLowerCase()
-        .includes(options.query.trim().toLocaleLowerCase()),
+        .toLowerCase()
+        .includes(query),
   );
-  const timestamp = (p: DemoPost) => Date.parse(p.createdAt || "") || 0;
   if (options.mode === "explore") return rankForYou(state, filtered, now);
-  return filtered.sort((a, b) => timestamp(b) - timestamp(a));
+  return filtered.sort(
+    (a, b) => postTimestamp(b) - postTimestamp(a) || comparePostIds(a, b),
+  );
 }
 export function profileFor(state: DemoState, id: string, lang: "ru" | "kk") {
   if (!id || id === "me")
