@@ -112,3 +112,11 @@ Apply the inspect-first, non-destructive migration in [docs/migrations/MVP_3_APP
 ## MVP 3.1 operator-ready migration preparation
 
 The offline planner, exact export format, blockers and operator-only sequence are documented in [MVP_31_READINESS.md](docs/migrations/MVP_31_READINESS.md). No cloud schema mutations or administrator credential requests are authorized for Codex in this task. Preserve existing records/grants/IDs. Apply approved missing resources separately, replan to zero operations and then validate real query/transaction/row-access behavior on the authorized Preview. Runtime now also rejects non-null defaults on nullable additions and wrong Frankfurt project/database/endpoint configuration.
+
+## MVP 3.3 — verified legacy catalog column compatibility
+
+The connected operator reports the existing migration complete (11 tables; all added resources available). Do not recreate resources, rerun the cloud migration or alter existing data/permissions for this compatibility fix.
+
+The validator now recognizes only these extra legacy columns on their specific read-only catalog tables: cities.name, cities.slug, cities.country_code (scalar string/varchar/text family) and cities.enabled (scalar boolean); communities.name, communities.slug, communities.category (scalar string/varchar/text family). Present columns must be available, non-array and have a compatible scalar default; string capacity must be positive. They are validated separately and never added to application encode/projection mappings. They do not replace required bilingual name fields or community city references. Unknown required columns without a usable default still reject readiness; private grants, mapped field constraints, unique indexes and all other guards remain unchanged. Future catalog provisioning would need explicit legacy values rather than automatically inventing them.
+
+Local regression metadata models the operator-reported column structure and all 11 expected tables; representative types/sizes/index names are explicitly labeled as a local model, not an exported live snapshot. The offline planner must return no operations for that compatible completed structure. No cloud readback or migration reapplication is claimed from local tests.

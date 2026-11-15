@@ -29,7 +29,7 @@ if (index < 0 || !process.argv[index + 1]) {
         status: "blocked",
         reason:
           error instanceof Error &&
-          /^(Migration target|Duplicate table|Core table|Wait for|Index name|Unsafe table|Incompatible column|Nullable column|Content column|Required unique|Required column|Unmapped required|Unsupported|Unexpected)/.test(
+          /^(Migration target|Duplicate table|Core table|Wait for|Index name|Unsafe table|Incompatible (?:legacy )?column|Nullable column|Content column|Required unique|Required column|Unmapped required|Unsupported|Unexpected)/.test(
             error.message,
           )
             ? error.message

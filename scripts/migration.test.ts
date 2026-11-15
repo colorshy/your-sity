@@ -204,3 +204,132 @@ test("offline CLI emits a reviewable plan and redacts malformed snapshot content
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("operator-reported legacy catalog columns and all 11 post-migration tables validate with no operations", async () => {
+  const { postMigrationSchema } =
+    await import("./test-support/post-migration-schema");
+  const { inspectSchema } = await import("../src/lib/appwrite/schema");
+  const snapshot = postMigrationSchema(),
+    before = JSON.stringify(snapshot);
+  assert.equal(snapshot.tables.length, 11);
+  for (const t of snapshot.tables) {
+    const schema = inspectSchema(t.$id as keyof typeof fields, t);
+    for (const legacy of t.$id === "cities"
+      ? ["name", "slug", "country_code", "enabled"]
+      : t.$id === "communities"
+        ? ["name", "slug", "category"]
+        : [])
+      assert.ok(
+        !Object.values(schema.keys).includes(legacy),
+        "Legacy fields must not become application write mappings",
+      );
+  }
+  assert.deepEqual(planMvp3Migration(snapshot).operations, []);
+  assert.equal(JSON.stringify(snapshot), before);
+});
+
+test("legacy compatibility remains table-scoped and rejects incompatible definitions and unknown required columns", async () => {
+  const { postMigrationSchema } =
+    await import("./test-support/post-migration-schema");
+  const legacy = {
+    cities: ["name", "slug", "country_code", "enabled"],
+    communities: ["name", "slug", "category"],
+  };
+  for (const [table, keys] of Object.entries(legacy))
+    for (const key of keys)
+      for (const patch of [
+        { type: "integer" },
+        { array: true },
+        { status: "processing" },
+        { default: 42 },
+        ...(key === "enabled"
+          ? [{ type: "string", size: 16 }]
+          : [{ type: "boolean" }, { size: 0 }]),
+      ]) {
+        const snapshot = postMigrationSchema(),
+          t = snapshot.tables.find((t) => t.$id === table)!;
+        Object.assign(
+          t.columns.find((c) => c.key === key)!,
+          patch,
+        );
+        assert.throws(
+          () => planMvp3Migration(snapshot),
+          /Incompatible legacy column/,
+        );
+      }
+  for (const table of ["cities", "communities", "profiles"]) {
+    const snapshot = postMigrationSchema();
+    snapshot.tables
+      .find((t) => t.$id === table)!
+      .columns.push({
+        key: table === "profiles" ? "slug" : "unapproved_legacy",
+        type: "string",
+        size: 128,
+        required: true,
+        array: false,
+        status: "available",
+        default: null,
+      });
+    assert.throws(
+      () => planMvp3Migration(snapshot),
+      /Unmapped required column/,
+    );
+  }
+});
+
+test("complete legacy-compatible metadata still rejects unsafe policies, missing constraints and invalid mapped columns", async () => {
+  const { postMigrationSchema } =
+    await import("./test-support/post-migration-schema");
+  for (const mutate of [
+    (s: ReturnType<typeof postMigrationSchema>) => {
+      s.tables.find((t) => t.$id === "cities")!.$permissions = ['write("any")'];
+    },
+    (s: ReturnType<typeof postMigrationSchema>) => {
+      s.tables.find((t) => t.$id === "connections")!.rowSecurity = true;
+    },
+    (s: ReturnType<typeof postMigrationSchema>) => {
+      s.tables.find((t) => t.$id === "profiles")!.indexes = [];
+    },
+    (s: ReturnType<typeof postMigrationSchema>) => {
+      s.tables
+        .find((t) => t.$id === "post_likes")!
+        .indexes!.find((i) => i.type === "unique")!.status = "processing";
+    },
+    (s: ReturnType<typeof postMigrationSchema>) => {
+      s.tables.find((t) => t.$id === "cities")!.columns = s.tables
+        .find((t) => t.$id === "cities")!
+        .columns.filter((c) => c.key !== "name_ru");
+    },
+    (s: ReturnType<typeof postMigrationSchema>) => {
+      s.tables
+        .find((t) => t.$id === "comments")!
+        .columns.find((c) => c.key === "parent_id")!.required = true;
+    },
+  ]) {
+    const snapshot = postMigrationSchema();
+    mutate(snapshot);
+    assert.throws(() => planMvp3Migration(snapshot));
+  }
+});
+
+test("prototype property names do not expand the legacy allowlist", async () => {
+  const { postMigrationSchema } =
+    await import("./test-support/post-migration-schema");
+  for (const key of ["toString", "constructor", "hasOwnProperty"]) {
+    const snapshot = postMigrationSchema();
+    snapshot.tables
+      .find((t) => t.$id === "cities")!
+      .columns.push({
+        key,
+        type: "boolean",
+        required: true,
+        status: "available",
+        array: false,
+        default: null,
+      });
+    assert.throws(
+      () => planMvp3Migration(snapshot),
+      /Unmapped required column/,
+    );
+  }
+});

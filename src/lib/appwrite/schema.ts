@@ -91,6 +91,51 @@ export type TableMetadata = {
   }[];
 };
 export type Schema = { keys: Record<string, string>; columns: Column[] };
+// Verified catalog-only legacy columns. Validate them without mapping them into
+// application reads/writes; this is not an exemption for arbitrary extra fields.
+const legacyCatalogColumns: Partial<
+  Record<Table, Record<string, "string" | "boolean">>
+> = {
+  cities: {
+    name: "string",
+    slug: "string",
+    country_code: "string",
+    enabled: "boolean",
+  },
+  communities: { name: "string", slug: "string", category: "string" },
+};
+const stringCapacity = (c: Column) =>
+  c.size ??
+  (
+    { text: 65535, mediumtext: 16777215, longtext: 2147483647 } as Record<
+      string,
+      number
+    >
+  )[c.type] ??
+  0;
+function validateLegacyColumn(table: Table, c: Column): boolean {
+  const catalog = legacyCatalogColumns[table];
+  if (!catalog || !Object.hasOwn(catalog, c.key)) return false;
+  const expected = catalog[c.key];
+  const string = expected === "string";
+  const capacity = stringCapacity(c);
+  if (
+    c.status !== "available" ||
+    c.array ||
+    (string
+      ? !["string", "varchar", "text", "mediumtext", "longtext"].includes(
+          c.type,
+        ) ||
+        !Number.isFinite(capacity) ||
+        capacity < 1
+      : c.type !== "boolean") ||
+    (c.default != null &&
+      (typeof c.default !== expected ||
+        (string && (c.default as string).length > capacity)))
+  )
+    throw new Error("Incompatible legacy column: " + table + "." + c.key);
+  return true;
+}
 export function inspectSchema(
   table: Table,
   metadata: TableMetadata,
@@ -152,15 +197,7 @@ export function inspectSchema(
       throw new Error(
         "Required column contract mismatch: " + table + "." + field,
       );
-    const capacity =
-      c.size ??
-      (
-        { text: 65535, mediumtext: 16777215, longtext: 2147483647 } as Record<
-          string,
-          number
-        >
-      )[c.type] ??
-      0;
+    const capacity = stringCapacity(c);
     const minimum =
       field === "body"
         ? table === "posts"
@@ -191,6 +228,7 @@ export function inspectSchema(
       if (metadata.columns.some((c) => c.key === f)) keys[f] = f;
   }
   for (const c of metadata.columns) {
+    if (validateLegacyColumn(table, c)) continue;
     if (c.required && c.default == null && !Object.values(keys).includes(c.key))
       throw new Error("Unmapped required column: " + table + "." + c.key);
   }

@@ -1,4 +1,6 @@
-# MVP 3.1 migration readiness report — prepared, not cloud-applied
+# MVP 3.1 migration readiness — historical preparation report
+
+**Update — 16 November 2026:** the connected operator reports the MVP 3 migration already applied: 11 tables, four social tables, sixteen added columns and nine added indexes available; social tables remain server-private. Do not recreate or repeat the migration. This is operator-reported cloud state, not a fresh readback from this Codex session. The preparation instructions below are retained as reference; current work is legacy catalog compatibility and post-migration verification.
 
 Target: Frankfurt `https://fra.cloud.appwrite.io/v1`, existing project `your-city`, existing database `your_city_db`. The founder reports seven existing tables, four missing social tables and three missing fields. This is supplied context, **not a live schema inspection** by this execution.
 

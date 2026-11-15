@@ -1,4 +1,5 @@
 /** Loopback SDK contract fixture. No live Appwrite resources are touched. */
+import { postMigrationSchema } from "./test-support/post-migration-schema";
 import { createServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -14,6 +15,18 @@ type Raw = Record<string, unknown> & {
   $updatedAt: string;
   $permissions: string[];
 };
+// Exercise the same required catalog extras at the real SDK/runtime boundary.
+const legacyColumns = new Map(
+  postMigrationSchema()
+    .tables.filter((t) => ["cities", "communities"].includes(t.$id))
+    .map((t) => [
+      t.$id,
+      t.columns.filter(
+        (c) =>
+          !Object.keys(fields[t.$id as keyof typeof fields]).includes(c.key),
+      ),
+    ]),
+);
 const database = "your_city_db",
   now = () => new Date().toISOString();
 const rows = new Map<string, Raw>();
@@ -42,7 +55,14 @@ function row(
   if (target === rows) revision++;
   return r;
 }
-row("cities", "shymkent", { name_kk: "Шымкент", name_ru: "Шымкент" });
+row("cities", "shymkent", {
+  name_kk: "Шымкент",
+  name_ru: "Шымкент",
+  name: "Шымкент",
+  slug: "shymkent",
+  country_code: "KZ",
+  enabled: true,
+});
 for (const [id, kk, ru] of [
   ["drivers", "Көлік жүргізушілері", "Автолюбители"],
   ["discounts", "Жеңілдіктер", "Скидки"],
@@ -52,7 +72,14 @@ for (const [id, kk, ru] of [
   ["events", "Іс-шаралар", "События"],
   ["marketplace", "Маркет", "Маркет"],
 ])
-  row("communities", id, { city_id: "shymkent", name_kk: kk, name_ru: ru });
+  row("communities", id, {
+    city_id: "shymkent",
+    name_kk: kk,
+    name_ru: ru,
+    name: ru,
+    slug: id,
+    category: "city",
+  });
 function createUser(email: string, name = "Test Resident", onboarded = true) {
   const id = createHash("sha256").update(email).digest("hex").slice(0, 32);
   const u = { $id: id, email, name, emailVerification: true };
@@ -80,17 +107,22 @@ function metadata(table: string): TableMetadata {
     $permissions: ["cities", "communities"].includes(table)
       ? ['read("any")']
       : [],
-    columns: Object.keys(fields[table as keyof typeof fields]).map((key) => ({
-      key,
-      type: ["onboarded", "is_read"].includes(key) ? "boolean" : "string",
-      status: "available",
-      required:
-        !(table === "profiles" && key === "social_version") &&
-        !(table === "comments" && key === "parent_id") &&
-        !(table === "reports" && key === "comment_id") &&
-        !(table === "notifications" && ["post_id", "comment_id"].includes(key)),
-      size: 10000,
-    })),
+    columns: [
+      ...Object.keys(fields[table as keyof typeof fields]).map((key) => ({
+        key,
+        type: ["onboarded", "is_read"].includes(key) ? "boolean" : "string",
+        status: "available",
+        required:
+          !(table === "profiles" && key === "social_version") &&
+          !(table === "comments" && key === "parent_id") &&
+          !(table === "reports" && key === "comment_id") &&
+          !(
+            table === "notifications" && ["post_id", "comment_id"].includes(key)
+          ),
+        size: 10000,
+      })),
+      ...(legacyColumns.get(table) ?? []),
+    ],
     indexes: uniqueFields[table as keyof typeof fields]
       ? [
           {

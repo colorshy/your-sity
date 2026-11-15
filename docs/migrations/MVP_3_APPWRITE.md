@@ -1,4 +1,6 @@
-# MVP 3 additive Appwrite migration — prepared, not applied
+# MVP 3 additive Appwrite migration — reference contract (operator reports applied)
+
+**Update — 16 November 2026:** the connected operator reports the MVP 3 migration already applied: 11 tables, four social tables, sixteen added columns and nine added indexes available; social tables remain server-private. Do not recreate or repeat the migration. This is operator-reported cloud state, not a fresh readback from this Codex session. The preparation instructions below are retained as reference; current work is legacy catalog compatibility and post-migration verification.
 
 Target only existing endpoint/project/database: `https://fra.cloud.appwrite.io/v1` / `your-city` / `your_city_db`. Inspect existing metadata first, reuse equivalent columns/indexes and preserve all rows/IDs. This document is the migration manifest for the separately authorized backend operator; no runtime DDL or new backend is introduced.
 
