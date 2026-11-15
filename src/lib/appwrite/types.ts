@@ -1,5 +1,6 @@
 export type Base = { id: string; created_at: string };
 export type Profile = Base & {
+  social_version?: string | null;
   user_id: string;
   display_name: string;
   city_id: string;
@@ -20,18 +21,38 @@ export type Post = Base & {
   status: string;
 };
 export type Comment = Base & {
+  parent_id?: string | null;
   author_id: string;
   post_id: string;
   body: string;
   status: string;
 };
 export type Report = Base & {
+  comment_id?: string | null;
   reporter_id: string;
   post_id: string;
   reason: string;
   status: string;
 };
+export type PostInteraction = Base & { user_id: string; post_id: string };
+export type Connection = Base & {
+  user_id: string;
+  target_id: string;
+  kind: "follow" | "mute" | "block";
+};
+export type Notification = Base & {
+  recipient_id: string;
+  actor_id: string;
+  kind: "like" | "comment" | "reply" | "follow";
+  post_id?: string | null;
+  comment_id?: string | null;
+  is_read: boolean;
+};
 export type Rows = {
+  post_likes: PostInteraction;
+  bookmarks: PostInteraction;
+  connections: Connection;
+  notifications: Notification;
   cities: City;
   profiles: Profile;
   communities: Community;

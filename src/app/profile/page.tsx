@@ -1,3 +1,4 @@
+import { AccountConnections } from "@/components/backend/interactions";
 import Link from "next/link";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { requireResident } from "@/lib/auth";
@@ -21,16 +22,13 @@ export default async function Page({
     service.communities(),
     service.memberships(),
     service.repo.get("cities", profile.city_id),
-    service.repo.list(
-      "posts",
-      [
-        { field: "author_id", value: user.id },
-        { field: "status", value: "published" },
-      ],
-      { limit: 21, offset: (page - 1) * 20, desc: true },
-    ),
+    service.ownPosts(page),
   ]);
   const ids = members.map((m) => m.community_id);
+  const connections = await service.connections();
+  const connected = await service.authors(
+    connections.map((c) => ({ author_id: c.target_id })),
+  );
   return (
     <Shell>
       <h1>{profile.display_name}</h1>
@@ -72,6 +70,25 @@ export default async function Page({
           {t("Модерация", "Модерация")}
         </Link>
       )}
+      <h2>
+        {t(
+          "Жазылымдар және жасырылған аккаунттар",
+          "Подписки и скрытые аккаунты",
+        )}
+      </h2>
+      {Array.from(new Set(connections.map((c) => c.target_id))).map((uid) => (
+        <section key={uid} className="form-panel" data-connection-target={uid}>
+          <p>
+            {connected.find((a) => a.id === uid)?.display_name ??
+              t("Тұрғын", "Житель")}
+          </p>
+          <AccountConnections
+            service={service}
+            targetId={uid}
+            connections={connections}
+          />
+        </section>
+      ))}
       <h2>{t("Қауымдастықтар", "Сообщества")}</h2>
       <CommunityCards
         communities={communities.filter((c) => ids.includes(c.id))}

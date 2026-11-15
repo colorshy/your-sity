@@ -1,5 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Actor, Repository, Post } from "./types";
+import type {
+  Actor,
+  Repository,
+  Post,
+  Table,
+  Filter,
+  Rows,
+  Notification,
+  Connection,
+} from "./types";
+import { rankForYou } from "../recommendations";
 import { AccessError, owner, text, validId } from "./policy";
 export const membershipId = (user: string, community: string) =>
   createHash("sha256")
@@ -53,12 +63,14 @@ export class CityService {
   }
   async resident() {
     const p = await this.profile();
-    if (!p?.onboarded || !p.city_id)
+    if (!p?.onboarded || p.city_id !== "shymkent")
       throw new AccessError("Onboarding required");
     return p;
   }
   async cities() {
-    return this.repo.list("cities", [], { limit: 100 });
+    return (await this.repo.list("cities", [], { limit: 100 })).filter(
+      (c) => c.id === "shymkent",
+    );
   }
   async communities() {
     const p = await this.resident();
@@ -101,7 +113,7 @@ export class CityService {
   ) {
     name = text(name, 2, 80);
     if (
-      !validId(city) ||
+      city !== "shymkent" ||
       communities.length > 30 ||
       !communities.every(validId) ||
       !["ru", "kk"].includes(locale)
@@ -192,53 +204,138 @@ export class CityService {
       locale,
     });
   }
-  async posts(mode: string, page = 1, community?: string) {
+  // Beta safety bounds: never silently truncate privacy lists or eligible records.
+  async allRows<K extends Table>(
+    table: K,
+    filters: Filter[] = [],
+    desc = false,
+  ): Promise<Rows[K][]> {
+    const result: Rows[K][] = [];
+    for (let offset = 0; offset < 1000; offset += 100) {
+      const batch = await this.repo.list(table, filters, {
+        limit: 100,
+        offset,
+        desc,
+      });
+      result.push(...batch);
+      if (batch.length < 100) return result;
+    }
+    throw new AccessError("Beta dataset limit reached");
+  }
+  async connections() {
+    await this.resident();
+    return this.allRows("connections", [
+      { field: "user_id", value: this.actor.id },
+    ]);
+  }
+  async hiddenAuthors() {
+    const mine = await this.connections();
+    const inbound = await this.allRows("connections", [
+      { field: "target_id", value: this.actor.id },
+      { field: "kind", value: "block" },
+    ]);
+    return new Set([
+      ...mine.filter((c) => c.kind !== "follow").map((c) => c.target_id),
+      ...inbound.map((c) => c.user_id),
+    ]);
+  }
+  async posts(mode: string, page = 1, community?: string, now = Date.now()) {
     const cs = community
       ? [await this.community(community)]
       : await this.communities();
     let ids = cs.map((c) => c.id);
-    if (mode === "mine") {
-      const memberships = await this.memberships();
+    const memberships = await this.memberships();
+    if (mode === "mine")
       ids = ids.filter((cid) =>
         memberships.some((m) => m.community_id === cid),
       );
-    }
     if (!ids.length) return [];
-    return this.repo.list(
-      "posts",
-      [
-        { field: "community_id", value: ids },
-        { field: "status", value: "published" },
-      ],
-      {
-        limit: 21,
-        offset: (Math.max(1, Math.min(page, 1000)) - 1) * 20,
-        desc: true,
-      },
-    );
+    const hidden = await this.hiddenAuthors();
+    let eligible = (
+      await this.allRows(
+        "posts",
+        [
+          { field: "community_id", value: ids },
+          { field: "status", value: "published" },
+        ],
+        true,
+      )
+    ).filter((p) => !hidden.has(p.author_id));
+    if (mode === "for-you") {
+      const [connections, likes, saved, comments] = await Promise.all([
+        this.connections(),
+        this.allRows("post_likes", [
+          { field: "user_id", value: this.actor.id },
+        ]),
+        this.allRows("bookmarks", [{ field: "user_id", value: this.actor.id }]),
+        this.allRows("comments", [
+          { field: "author_id", value: this.actor.id },
+          { field: "status", value: "published" },
+        ]),
+      ]);
+      // Rank a bounded recent candidate window; no demo fixture or browser state is used.
+      eligible = rankForYou(
+        {
+          joined: memberships.map((m) => m.community_id),
+          following: connections
+            .filter((c) => c.kind === "follow")
+            .map((c) => c.target_id),
+          likes: likes.map((l) => l.post_id),
+          saved: saved.map((b) => b.post_id),
+          comments: comments.map((c) => ({
+            post: c.post_id,
+            authorId: "me",
+            deleted: false,
+          })),
+          profile: { neighborhood: "" },
+          blocked: [...hidden],
+          muted: [],
+        },
+        eligible.slice(0, 200).map((p) => ({
+          ...p,
+          community: p.community_id,
+          authorId: p.author_id,
+          createdAt: p.created_at,
+        })),
+        now,
+      );
+    }
+    const offset = (Math.max(1, Math.min(page, 1000)) - 1) * 20;
+    return eligible.slice(offset, offset + 21);
   }
   async post(pid: string) {
     const p = validId(pid) ? await this.repo.get("posts", pid) : null;
     if (!p) throw new AccessError();
     await this.community(p.community_id);
+    if ((await this.hiddenAuthors()).has(p.author_id)) throw new AccessError();
     if (p.status !== "published" && p.author_id !== this.actor.id)
       throw new AccessError();
     return p;
   }
   async comments(pid: string, page = 1) {
     await this.post(pid);
-    return this.repo.list(
+    const hidden = await this.hiddenAuthors();
+    const rows = await this.allRows(
       "comments",
       [
         { field: "post_id", value: pid },
-        { field: "status", value: "published" },
+        { field: "status", value: ["published", "deleted"] },
       ],
-      {
-        limit: 21,
-        offset: (Math.max(1, Math.min(page, 1000)) - 1) * 20,
-        desc: true,
-      },
+      true,
     );
+    const visible = rows.filter(
+      (c) =>
+        !hidden.has(c.author_id) &&
+        (c.status === "published" ||
+          rows.some(
+            (reply) =>
+              reply.parent_id === c.id &&
+              reply.status === "published" &&
+              !hidden.has(reply.author_id),
+          )),
+    );
+    const offset = (Math.max(1, Math.min(page, 1000)) - 1) * 20;
+    return visible.slice(offset, offset + 21);
   }
   async createPost(cid: string, body: string) {
     body = text(body, 1, 5000);
@@ -273,19 +370,44 @@ export class CityService {
       await repo.update("posts", pid, { status: "deleted", body: "[deleted]" });
     });
   }
-  async createComment(pid: string, body: string) {
+  async createComment(pid: string, body: string, parentId = "") {
     body = text(body, 1, 2000);
     return this.repo.transaction(async (repo) => {
       const svc = new CityService(repo, this.actor);
       const p = await svc.post(pid);
       if (p.status !== "published") throw new AccessError();
       await svc.joined(p.community_id);
-      return repo.create("comments", id(), {
+      let recipient = p.author_id;
+      if (parentId) {
+        if (!validId(parentId)) throw new AccessError();
+        const parent = await repo.get("comments", parentId);
+        if (
+          !parent ||
+          parent.post_id !== pid ||
+          parent.status !== "published" ||
+          (await svc.hiddenAuthors()).has(parent.author_id)
+        )
+          throw new AccessError();
+        recipient = parent.author_id;
+      }
+      await svc.fenceParticipants([p.author_id, recipient]);
+      const comment = await repo.create("comments", id(), {
         author_id: this.actor.id,
         post_id: pid,
+        parent_id: parentId || null,
         body,
         status: "published",
       });
+      await svc.notify(
+        recipient,
+        parentId ? "reply" : "comment",
+        comment.id,
+        pid,
+        comment.id,
+      );
+      if (parentId && p.author_id !== recipient)
+        await svc.notify(p.author_id, "comment", comment.id, pid, comment.id);
+      return comment;
     });
   }
   async editComment(cid: string, body: string) {
@@ -300,6 +422,7 @@ export class CityService {
       await svc.joined(p.community_id);
       if (c.status !== "published" || p.status !== "published")
         throw new AccessError();
+      await svc.fenceParticipants([p.author_id]);
       return repo.update("comments", cid, { body });
     });
   }
@@ -310,23 +433,237 @@ export class CityService {
       const c = await repo.get("comments", cid);
       if (!c) throw new AccessError();
       owner(this.actor.id, c.author_id);
-      await svc.post(c.post_id);
+      const post = await svc.post(c.post_id);
+      await svc.fenceParticipants([post.author_id]);
       await repo.update("comments", cid, {
         status: "deleted",
         body: "[deleted]",
       });
     });
   }
-  async report(pid: string, reason: string) {
+  async report(pid: string, reason: string, commentId = "") {
     const p = await this.post(pid);
     if (p.status !== "published") throw new AccessError();
-    const rid = membershipId(this.actor.id, pid);
+    if (commentId) {
+      if (!validId(commentId)) throw new AccessError();
+      const c = await this.repo.get("comments", commentId);
+      if (
+        !c ||
+        c.post_id !== pid ||
+        c.status !== "published" ||
+        (await this.hiddenAuthors()).has(c.author_id)
+      )
+        throw new AccessError();
+    }
+    const rid = membershipId(
+      this.actor.id,
+      commentId ? JSON.stringify([pid, commentId]) : pid,
+    );
     await this.repo.create("reports", rid, {
+      comment_id: commentId || null,
       post_id: pid,
       reporter_id: this.actor.id,
       reason: text(reason, 5, 1000),
       status: "open",
     });
+  }
+  async target(uid: string) {
+    if (!validId(uid) || uid === this.actor.id) throw new AccessError();
+    const mine = await this.resident();
+    const matches = await this.repo.list(
+      "profiles",
+      [{ field: "user_id", value: uid }],
+      { limit: 2 },
+    );
+    const p = matches[0];
+    if (matches.length !== 1 || !p.onboarded || p.city_id !== mine.city_id)
+      throw new AccessError();
+    return { id: p.user_id, display_name: p.display_name };
+  }
+  // Touch shared participant rows inside the transaction. Block and interaction
+  // writers then conflict even when the connection query originally found no row.
+  private async fenceParticipants(uids: string[]) {
+    for (const uid of [...new Set([this.actor.id, ...uids])].sort()) {
+      const participant = new CityService(this.repo, { id: uid, name: "" });
+      const profile = await participant.resident();
+      await this.repo.update("profiles", profile.id, { social_version: id() });
+    }
+  }
+  async notify(
+    recipient: string,
+    kind: Notification["kind"],
+    event: string,
+    postId?: string,
+    commentId?: string,
+  ) {
+    if (recipient === this.actor.id) return;
+    const receiver = new CityService(this.repo, { id: recipient, name: "" });
+    await receiver.resident();
+    if (
+      (await receiver.hiddenAuthors()).has(this.actor.id) ||
+      (await this.hiddenAuthors()).has(recipient)
+    )
+      return;
+    const nid = membershipId(recipient, JSON.stringify([kind, event]));
+    if (await this.repo.get("notifications", nid)) return;
+    await this.repo.create("notifications", nid, {
+      recipient_id: recipient,
+      actor_id: this.actor.id,
+      kind,
+      post_id: postId || null,
+      comment_id: commentId || null,
+      is_read: false,
+    });
+  }
+  async interact(pid: string, kind: "like" | "bookmark", enabled: boolean) {
+    if (!["like", "bookmark"].includes(kind)) throw new AccessError();
+    return this.repo.transaction(async (repo) => {
+      const svc = new CityService(repo, this.actor);
+      const p = await svc.post(pid);
+      if (p.status !== "published") throw new AccessError();
+      await svc.fenceParticipants([p.author_id]);
+      const table = kind === "like" ? "post_likes" : "bookmarks";
+      const rid = membershipId(this.actor.id, pid);
+      const existing = await repo.get(table, rid);
+      if (existing) {
+        owner(this.actor.id, existing.user_id);
+        if (existing.post_id !== pid) throw new AccessError();
+      }
+      if (enabled && !existing) {
+        await repo.create(table, rid, { user_id: this.actor.id, post_id: pid });
+        if (kind === "like") await svc.notify(p.author_id, "like", rid, pid);
+      } else if (!enabled && existing) await repo.delete(table, rid);
+    });
+  }
+  async connection(uid: string, kind: Connection["kind"], enabled: boolean) {
+    if (!["follow", "mute", "block"].includes(kind)) throw new AccessError();
+    return this.repo.transaction(async (repo) => {
+      const svc = new CityService(repo, this.actor);
+      await svc.target(uid);
+      await svc.fenceParticipants([uid]);
+      const rid = membershipId(this.actor.id, JSON.stringify([kind, uid]));
+      const existing = await repo.get("connections", rid);
+      if (existing) {
+        owner(this.actor.id, existing.user_id);
+        if (existing.target_id !== uid || existing.kind !== kind)
+          throw new AccessError();
+      }
+      // Permit removing preferences even when the other user has blocked the viewer.
+      if (enabled && kind === "follow" && (await svc.hiddenAuthors()).has(uid))
+        throw new AccessError();
+      if (enabled && !existing) {
+        await repo.create("connections", rid, {
+          user_id: this.actor.id,
+          target_id: uid,
+          kind,
+        });
+        if (kind === "follow") await svc.notify(uid, "follow", rid);
+      } else if (!enabled && existing) await repo.delete("connections", rid);
+      if (enabled && kind === "block") {
+        for (const [from, to] of [
+          [this.actor.id, uid],
+          [uid, this.actor.id],
+        ]) {
+          const follows = await svc.allRows("connections", [
+            { field: "user_id", value: from },
+            { field: "target_id", value: to },
+            { field: "kind", value: "follow" },
+          ]);
+          for (const follow of follows)
+            await repo.delete("connections", follow.id);
+        }
+      }
+    });
+  }
+  async postInteractions(pid: string) {
+    await this.post(pid);
+    const likes = await this.allRows("post_likes", [
+      { field: "post_id", value: pid },
+    ]);
+    const hidden = await this.hiddenAuthors();
+    return {
+      count: likes.filter((l) => !hidden.has(l.user_id)).length,
+      liked: !!(await this.repo.get(
+        "post_likes",
+        membershipId(this.actor.id, pid),
+      )),
+      bookmarked: !!(await this.repo.get(
+        "bookmarks",
+        membershipId(this.actor.id, pid),
+      )),
+    };
+  }
+  async ownPosts(page = 1) {
+    const communities = new Set((await this.communities()).map((c) => c.id));
+    const posts = (
+      await this.allRows(
+        "posts",
+        [
+          { field: "author_id", value: this.actor.id },
+          { field: "status", value: "published" },
+        ],
+        true,
+      )
+    ).filter((p) => communities.has(p.community_id));
+    const offset = (Math.max(1, page) - 1) * 20;
+    return posts.slice(offset, offset + 21);
+  }
+  async savedPosts(page = 1) {
+    await this.resident();
+    const saved = await this.allRows(
+      "bookmarks",
+      [{ field: "user_id", value: this.actor.id }],
+      true,
+    );
+    const hidden = await this.hiddenAuthors();
+    const communities = new Set((await this.communities()).map((c) => c.id));
+    const posts: Post[] = [];
+    for (const item of saved) {
+      const p = await this.repo.get("posts", item.post_id);
+      if (
+        p?.status === "published" &&
+        communities.has(p.community_id) &&
+        !hidden.has(p.author_id)
+      )
+        posts.push(p);
+    }
+    const offset = (Math.max(1, page) - 1) * 20;
+    return posts.slice(offset, offset + 21);
+  }
+  async notifications(page = 1) {
+    const hidden = await this.hiddenAuthors();
+    const rows = await this.allRows(
+      "notifications",
+      [{ field: "recipient_id", value: this.actor.id }],
+      true,
+    );
+    const result: Notification[] = [];
+    for (const n of rows) {
+      if (hidden.has(n.actor_id)) continue;
+      if (n.post_id) {
+        try {
+          if ((await this.post(n.post_id)).status !== "published") continue;
+        } catch (error) {
+          if (error instanceof AccessError) continue;
+          throw error;
+        }
+      }
+      if (n.comment_id) {
+        const c = await this.repo.get("comments", n.comment_id);
+        if (!c || c.status !== "published" || c.post_id !== n.post_id) continue;
+      }
+      result.push(n);
+    }
+    const offset = (Math.max(1, page) - 1) * 20;
+    return result.slice(offset, offset + 21);
+  }
+  async readNotification(nid: string) {
+    await this.resident();
+    if (!validId(nid)) throw new AccessError();
+    const n = await this.repo.get("notifications", nid);
+    if (!n) throw new AccessError();
+    owner(this.actor.id, n.recipient_id);
+    await this.repo.update("notifications", nid, { is_read: true });
   }
   isModerator() {
     return this.moderators.includes(this.actor.id);
@@ -352,7 +689,12 @@ export class CityService {
       if (decision === "hide") {
         const post = await repo.get("posts", report.post_id);
         if (!post) throw new AccessError();
-        if (post.status !== "deleted")
+        if (report.comment_id) {
+          const comment = await repo.get("comments", report.comment_id);
+          if (!comment || comment.post_id !== post.id) throw new AccessError();
+          if (comment.status !== "deleted")
+            await repo.update("comments", comment.id, { status: "hidden" });
+        } else if (post.status !== "deleted")
           await repo.update("posts", post.id, { status: "hidden" });
       }
       await repo.update("reports", rid, {

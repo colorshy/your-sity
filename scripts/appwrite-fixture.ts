@@ -1,7 +1,13 @@
 /** Loopback SDK contract fixture. No live Appwrite resources are touched. */
+import { postMigrationSchema } from "./test-support/post-migration-schema";
 import { createServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
-import { fields, tables, type TableMetadata } from "../src/lib/appwrite/schema";
+import {
+  fields,
+  tables,
+  uniqueFields,
+  type TableMetadata,
+} from "../src/lib/appwrite/schema";
 import { membershipId } from "../src/lib/appwrite/service";
 type Raw = Record<string, unknown> & {
   $id: string;
@@ -9,6 +15,18 @@ type Raw = Record<string, unknown> & {
   $updatedAt: string;
   $permissions: string[];
 };
+// Exercise the same required catalog extras at the real SDK/runtime boundary.
+const legacyColumns = new Map(
+  postMigrationSchema()
+    .tables.filter((t) => ["cities", "communities"].includes(t.$id))
+    .map((t) => [
+      t.$id,
+      t.columns.filter(
+        (c) =>
+          !Object.keys(fields[t.$id as keyof typeof fields]).includes(c.key),
+      ),
+    ]),
+);
 const database = "your_city_db",
   now = () => new Date().toISOString();
 const rows = new Map<string, Raw>();
@@ -18,6 +36,8 @@ const users = new Map<
 >();
 const sessions = new Map<string, string>();
 const transactions = new Map<string, Map<string, Raw>>();
+const transactionVersions = new Map<string, number>();
+let revision = 0;
 function row(
   table: string,
   id: string,
@@ -32,9 +52,17 @@ function row(
     ...data,
   };
   target.set(table + ":" + id, r);
+  if (target === rows) revision++;
   return r;
 }
-row("cities", "shymkent", { name_kk: "Шымкент", name_ru: "Шымкент" });
+row("cities", "shymkent", {
+  name_kk: "Шымкент",
+  name_ru: "Шымкент",
+  name: "Шымкент",
+  slug: "shymkent",
+  country_code: "KZ",
+  enabled: true,
+});
 for (const [id, kk, ru] of [
   ["drivers", "Көлік жүргізушілері", "Автолюбители"],
   ["discounts", "Жеңілдіктер", "Скидки"],
@@ -44,7 +72,14 @@ for (const [id, kk, ru] of [
   ["events", "Іс-шаралар", "События"],
   ["marketplace", "Маркет", "Маркет"],
 ])
-  row("communities", id, { city_id: "shymkent", name_kk: kk, name_ru: ru });
+  row("communities", id, {
+    city_id: "shymkent",
+    name_kk: kk,
+    name_ru: ru,
+    name: ru,
+    slug: id,
+    category: "city",
+  });
 function createUser(email: string, name = "Test Resident", onboarded = true) {
   const id = createHash("sha256").update(email).digest("hex").slice(0, 32);
   const u = { $id: id, email, name, emailVerification: true };
@@ -72,33 +107,32 @@ function metadata(table: string): TableMetadata {
     $permissions: ["cities", "communities"].includes(table)
       ? ['read("any")']
       : [],
-    columns: Object.keys(fields[table as keyof typeof fields]).map((key) => ({
-      key,
-      type: key === "onboarded" ? "boolean" : "string",
-      status: "available",
-      required: true,
-      size: 10000,
-    })),
-    indexes:
-      table === "profiles"
-        ? [
-            {
-              key: "yc_profiles_user",
-              type: "unique",
-              columns: ["user_id"],
-              status: "available",
-            },
-          ]
-        : table === "community_memberships"
-          ? [
-              {
-                key: "yc_membership_pair",
-                type: "unique",
-                columns: ["user_id", "community_id"],
-                status: "available",
-              },
-            ]
-          : [],
+    columns: [
+      ...Object.keys(fields[table as keyof typeof fields]).map((key) => ({
+        key,
+        type: ["onboarded", "is_read"].includes(key) ? "boolean" : "string",
+        status: "available",
+        required:
+          !(table === "profiles" && key === "social_version") &&
+          !(table === "comments" && key === "parent_id") &&
+          !(table === "reports" && key === "comment_id") &&
+          !(
+            table === "notifications" && ["post_id", "comment_id"].includes(key)
+          ),
+        size: 10000,
+      })),
+      ...(legacyColumns.get(table) ?? []),
+    ],
+    indexes: uniqueFields[table as keyof typeof fields]
+      ? [
+          {
+            key: "unique_pair",
+            type: "unique",
+            columns: uniqueFields[table as keyof typeof fields]!,
+            status: "available",
+          },
+        ]
+      : [],
   };
 }
 createServer(async (req, res) => {
@@ -110,6 +144,12 @@ createServer(async (req, res) => {
     body = JSON.parse(raw || "{}");
   } catch {}
   const send = (code: number, data: unknown) => {
+    // A 204 has no entity. Advertising JSON here makes SDK 31 parse an empty body.
+    if (code === 204) {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
     res.writeHead(code, { "content-type": "application/json" });
     res.end(JSON.stringify(data));
   };
@@ -156,10 +196,11 @@ createServer(async (req, res) => {
       ? send(201, {})
       : fail(401);
   }
-  if (!req.headers["x-appwrite-key"]) return fail(401);
+  if (req.headers["x-appwrite-key"] !== "test-server-key") return fail(401);
   if (path === "/tablesdb/transactions" && req.method === "POST") {
     const id = randomUUID();
     transactions.set(id, structuredClone(rows));
+    transactionVersions.set(id, revision);
     return send(201, { $id: id });
   }
   const tx = path.match(/^\/tablesdb\/transactions\/([^/]+)$/);
@@ -167,10 +208,17 @@ createServer(async (req, res) => {
     const state = transactions.get(tx[1]);
     if (!state) return fail(404);
     if (body.commit) {
+      if (transactionVersions.get(tx[1]) !== revision) {
+        transactions.delete(tx[1]);
+        transactionVersions.delete(tx[1]);
+        return fail(409);
+      }
       rows.clear();
       for (const [key, value] of state) rows.set(key, value);
+      revision++;
     }
     transactions.delete(tx[1]);
+    transactionVersions.delete(tx[1]);
     return send(200, { $id: tx[1] });
   }
   const match = path.match(
@@ -194,6 +242,7 @@ createServer(async (req, res) => {
     if (!existing) return fail(404);
     if (req.method === "DELETE") {
       target.delete(table + ":" + id);
+      if (target === rows) revision++;
       return send(204, null);
     }
     if (req.method === "PATCH")
@@ -211,6 +260,18 @@ createServer(async (req, res) => {
   if (req.method === "POST") {
     const rowId = String(body.rowId);
     if (target.has(table + ":" + rowId)) return fail(409);
+    const unique = uniqueFields[table as keyof typeof fields];
+    if (
+      unique &&
+      [...target.entries()].some(
+        ([key, r]) =>
+          key.startsWith(table + ":") &&
+          unique.every(
+            (f) => r[f] === (body.data as Record<string, unknown>)[f],
+          ),
+      )
+    )
+      return fail(409);
     return send(
       201,
       row(table, rowId, body.data as Record<string, unknown>, target),

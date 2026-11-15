@@ -59,6 +59,7 @@ export async function authenticate(form: FormData) {
   )
     redirect(target + "?error=invalid");
   let failed = false;
+  let openedSession: Account | null = null;
   try {
     const repo = await getRepository();
     if (signup)
@@ -83,6 +84,7 @@ export async function authenticate(form: FormData) {
     });
     const user = await (await import("@/lib/appwrite/server")).sessionAccount();
     if (!user) throw new Error("Missing session");
+    openedSession = user;
     const identity = await user.get();
     let profile = await new CityService(repo, {
       id: identity.$id,
@@ -106,6 +108,12 @@ export async function authenticate(form: FormData) {
     );
   } catch {
     failed = true;
+    if (openedSession) {
+      try {
+        await openedSession.deleteSession({ sessionId: "current" });
+      } catch {}
+    }
+    (await cookies()).delete(sessionCookie());
   }
   operationLog("auth_attempt", failed ? "failed" : "success", "auth");
   if (failed) redirect(target + "?error=auth");
@@ -236,7 +244,12 @@ export async function saveComment(form: FormData) {
   try {
     const cid = value(form, "comment");
     if (cid) await service.editComment(cid, value(form, "body"));
-    else await service.createComment(pid, value(form, "body"));
+    else
+      await service.createComment(
+        pid,
+        value(form, "body"),
+        value(form, "parent"),
+      );
   } catch {
     redirect("/posts/" + pid + "?error=save");
   }
@@ -262,7 +275,7 @@ export async function reportPost(form: FormData) {
   const pid = value(form, "post");
   if (!validId(pid)) redirect("/feed");
   try {
-    await service.report(pid, value(form, "reason"));
+    await service.report(pid, value(form, "reason"), value(form, "comment"));
   } catch {
     redirect("/posts/" + pid + "?error=save");
   }
@@ -279,4 +292,46 @@ export async function resolveReport(form: FormData) {
   }
   revalidatePath("/", "layout");
   redirect("/moderation");
+}
+
+export async function postInteraction(form: FormData) {
+  await guardAction("write");
+  const { service } = await requireResident();
+  const pid = value(form, "post");
+  if (!validId(pid)) redirect("/feed");
+  try {
+    const kind = value(form, "kind");
+    if (kind !== "like" && kind !== "bookmark") throw new Error();
+    await service.interact(pid, kind, value(form, "enabled") === "true");
+  } catch {
+    redirect("/posts/" + pid + "?error=save");
+  }
+  revalidatePath("/", "layout");
+}
+export async function accountConnection(form: FormData) {
+  await guardAction("write");
+  const { service } = await requireResident();
+  const uid = value(form, "target");
+  if (!validId(uid)) redirect("/profile");
+  const enabled = value(form, "enabled") === "true";
+  try {
+    const kind = value(form, "kind");
+    if (kind !== "follow" && kind !== "mute" && kind !== "block")
+      throw new Error();
+    await service.connection(uid, kind, enabled);
+  } catch {
+    redirect("/profile?error=save");
+  }
+  revalidatePath("/", "layout");
+  if (enabled) redirect("/profile");
+}
+export async function readNotification(form: FormData) {
+  await guardAction("write");
+  const { service } = await requireResident();
+  try {
+    await service.readNotification(value(form, "notification"));
+  } catch {
+    redirect("/notifications?error=save");
+  }
+  revalidatePath("/notifications");
 }

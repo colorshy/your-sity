@@ -70,3 +70,13 @@ See docs/architecture.md, docs/database.md, docs/progress.md and BACKEND_REQUIRE
 Production launch is pending external access, not declared complete. See [launch runbook](docs/launch-runbook.md) for exact evidence and the safe Vercel release sequence. Vercel config targets Next.js/Node 24 in Frankfurt and keeps automatic Git deployments disabled until live acceptance. Preview origin may use trusted Vercel deployment metadata; Production requires its explicit HTTPS canonical URL.
 
 New checks: `npm run test:operations`, `npm run launch:preflight`, and `LIVE_BASE_URL=<verified HTTPS origin> npm run launch:smoke`. Preflight/smoke return exit 2 when prerequisites are missing. The Vercel auth/write Firewall rule IDs in .env.example are required in Production/Preview runtime; missing/not-found/unavailable rules deny writes rather than bypass protection. Logout remains available. /api/health is liveness; /api/ready is a minimal backend/configuration readiness signal, not full live acceptance. Neither endpoint exposes credentials or records. Existing fixture tests remain explicitly local.
+
+## MVP 3 controlled beta candidate
+
+Authenticated routes now implement server-backed likes/private bookmarks, follows, threaded replies, notifications, mute/block and post/comment reporting on the existing Appwrite infrastructure. The public demo remains separate and unchanged. No hosted integration or deployment is implied: apply the additive [migration contract](docs/migrations/MVP_3_APPWRITE.md), then complete [live beta acceptance](docs/product/MULTIUSER_BETA.md) before real students join. Missing schema fails closed.
+
+Run `npm run test:multiuser` for server-domain fixture checks; `npm run test:social` includes both demo and multi-user suites. The complete browser suite includes a two-context SDK-fixture scenario. `npm run test:live` is an explicit opt-in HTTPS two-account smoke using securely supplied beta credentials, with no local fixture and no deployment. It reports blocked rather than passed when inputs are absent.
+
+## MVP 3.1 migration and Preview readiness
+
+`npm run migration:plan -- --snapshot <operator-metadata.json>` prepares an offline additive plan; it has no execution/network capability. `npm run test:migration` verifies convergence and incompatibility handling. Follow [the exact readiness report](docs/migrations/MVP_31_READINESS.md) and [live acceptance procedure](docs/product/MULTIUSER_BETA.md). The live runner now verifies the existing Vercel Preview identity and exact code SHA before sending supplied test-account credentials. No cloud migration, live result or production deployment is implied by local checks.

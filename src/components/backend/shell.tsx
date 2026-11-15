@@ -12,6 +12,8 @@ export async function Shell({ children }: { children: React.ReactNode }) {
         <nav className="header-actions">
           <Link href="/feed">{t("Лента", "Лента")}</Link>
           <Link href="/communities">{t("Қауымдар", "Сообщества")}</Link>
+          <Link href="/saved">{t("Сақталғандар", "Закладки")}</Link>
+          <Link href="/notifications">{t("Хабарламалар", "Уведомления")}</Link>
           <Link href="/profile">{t("Профиль", "Профиль")}</Link>
           <form action={setLocale}>
             <input

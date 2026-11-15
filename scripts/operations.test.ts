@@ -152,6 +152,14 @@ test("readiness validates all existing community IDs and query plans without mut
     calls.sort(),
     [
       "comments",
+      "comments",
+      "comments",
+      "post_likes",
+      "post_likes",
+      "bookmarks",
+      "connections",
+      "connections",
+      "notifications",
       "communities",
       "community_memberships",
       "posts",
@@ -245,4 +253,25 @@ test("SDK failures retain only safe numeric status, not provider payloads or cre
     },
   );
   assert.equal(await providerCall(async () => 42), 42);
+});
+
+test("runtime Appwrite identity is pinned; only non-production loopback fixtures are allowed", async () => {
+  const { resolveAppwriteConfig } = await import("../src/lib/appwrite/config");
+  assert.equal(resolveAppwriteConfig({}), null);
+  const env = { APPWRITE_API_KEY: "fixture-key", NODE_ENV: "production" };
+  assert.equal(resolveAppwriteConfig(env)?.project, "your-city");
+  for (const invalid of [
+    { APPWRITE_PROJECT_ID: "other" },
+    { APPWRITE_DATABASE_ID: "other" },
+    { APPWRITE_ENDPOINT: "https://other.example/v1" },
+    { APPWRITE_ENDPOINT: "http://127.0.0.1:54321/v1" },
+  ])
+    assert.throws(() => resolveAppwriteConfig({ ...env, ...invalid }));
+  assert.ok(
+    resolveAppwriteConfig({
+      ...env,
+      NODE_ENV: "test",
+      APPWRITE_ENDPOINT: "http://127.0.0.1:54321/v1",
+    }),
+  );
 });

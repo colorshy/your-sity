@@ -17,6 +17,7 @@ const keys = [
   "APPWRITE_ENDPOINT",
   "APPWRITE_PROJECT_ID",
   "APPWRITE_DATABASE_ID",
+  "APPWRITE_MODERATOR_IDS",
   "VERCEL_AUTH_RATE_LIMIT_ID",
   "VERCEL_WRITE_RATE_LIMIT_ID",
 ];
@@ -44,14 +45,14 @@ test("production-only or other-branch variables do not count as preview configur
       project,
       metadata.map((e) => ({ ...e, target: ["production"] })),
     ).issues.length,
-    6,
+    7,
   );
   assert.equal(
     auditDeploymentTarget(
       project,
       metadata.map((e) => ({ ...e, gitBranch: "other" })),
     ).issues.length,
-    6,
+    7,
   );
   assert.equal(
     auditDeploymentTarget(
@@ -89,7 +90,7 @@ test("deployment readback verifies project, source SHA and READY preview status"
       projectId: deploymentTarget.projectId,
       readyState: "READY",
       target: null,
-      meta: { releaseCommit: sha },
+      meta: { releaseCommit: sha, releaseBranch: deploymentTarget.branch },
     };
   assert.equal(verifyPreviewReadback(base, sha).deploymentId, "dpl_verified");
   for (const delta of [
@@ -99,4 +100,45 @@ test("deployment readback verifies project, source SHA and READY preview status"
     { meta: { releaseCommit: "b".repeat(40) } },
   ])
     assert.throws(() => verifyPreviewReadback({ ...base, ...delta }, sha));
+});
+
+test("beta writes require verified exact Preview URL, branch, project, SHA and non-production target", async () => {
+  const { verifyBetaPreview } =
+    await import("../src/lib/operations/beta-preview");
+  const sha = "a".repeat(40),
+    base = {
+      id: "dpl_beta",
+      url: "your-city-verified.vercel.app",
+      projectId: deploymentTarget.projectId,
+      target: null,
+      readyState: "READY",
+      meta: { releaseCommit: sha, releaseBranch: deploymentTarget.branch },
+    };
+  assert.equal(
+    verifyBetaPreview(base, "https://your-city-verified.vercel.app", sha)
+      .deploymentId,
+    "dpl_beta",
+  );
+  for (const change of [
+    { target: "production" },
+    { target: undefined },
+    { projectId: "other" },
+    { meta: { releaseCommit: sha, releaseBranch: "main" } },
+    { url: "other.vercel.app" },
+    { readyState: "ERROR" },
+  ])
+    assert.throws(() =>
+      verifyBetaPreview(
+        { ...base, ...change },
+        "https://your-city-verified.vercel.app",
+        sha,
+      ),
+    );
+  for (const origin of [
+    "https://your-city.example",
+    "http://your-city-verified.vercel.app",
+    "https://your-city-verified.vercel.app/path",
+    "https://user@your-city-verified.vercel.app",
+  ])
+    assert.throws(() => verifyBetaPreview(base, origin, sha));
 });
