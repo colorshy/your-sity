@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { initialDemoState, parseDemoState } from "../src/lib/demo-store";
 import { visiblePosts, authorId } from "../src/lib/social-demo";
+import { rankForYou, recommendationScore } from "../src/lib/recommendations";
 import { formatCityTime } from "../src/lib/city-data";
 import { posts } from "../src/lib/demo";
 const state = initialDemoState;
@@ -115,5 +116,113 @@ test("city timestamps are stable without browser/server ICU locale differences",
   assert.equal(
     formatCityTime("2026-11-13T23:30:00Z", "ru"),
     "14 нояб. · 04:30",
+  );
+});
+
+const rankingNow = Date.parse("2026-11-14T12:00:00+05:00");
+const emptyInterestState = {
+  ...initialDemoState,
+  joined: [],
+  following: [],
+  likes: [],
+  saved: [],
+  comments: [],
+  profile: { ...initialDemoState.profile, neighborhood: "" },
+};
+
+test("recommendations stay deterministic and discover several communities at cold start", () => {
+  const first = rankForYou(emptyInterestState, posts, rankingNow).map((p) => p.id);
+  const second = rankForYou(emptyInterestState, posts, rankingNow).map((p) => p.id);
+  assert.deepEqual(first, second);
+  assert.equal(new Set(first).size, posts.length);
+  assert.ok(
+    new Set(
+      first.slice(0, 5).map((id) => posts.find((p) => p.id === id)?.community),
+    ).size >= 3,
+  );
+});
+
+test("only real local interactions and preferences increase an individual post score", () => {
+  const post = posts.find((p) => p.id === "books")!;
+  const base = recommendationScore(emptyInterestState, post, rankingNow);
+  const interacted = {
+    ...emptyInterestState,
+    joined: [post.community],
+    following: [authorId(post)],
+    likes: [post.id],
+    saved: [post.id],
+    comments: [
+      {
+        id: "local-reply",
+        post: post.id,
+        authorId: "me",
+        author: "Me",
+        text: "Interesting",
+      },
+    ],
+    profile: { ...emptyInterestState.profile, neighborhood: post.neighborhood || "" },
+  };
+  assert.ok(recommendationScore(interacted, post, rankingNow) > base);
+  assert.equal(
+    recommendationScore(interacted, { ...post, likes: 999999 }, rankingNow),
+    recommendationScore(interacted, { ...post, likes: 0 }, rankingNow),
+  );
+  assert.equal(
+    recommendationScore(
+      { ...interacted, comments: [...interacted.comments, { ...interacted.comments[0], id: "another" }] },
+      post,
+      rankingNow,
+    ),
+    recommendationScore(interacted, post, rankingNow),
+  );
+});
+
+test("freshness is bounded for future timestamps and invalid dates get no freshness", () => {
+  const post = posts[0];
+  const recent = { ...post, createdAt: "2026-11-14T12:00:00+05:00" };
+  const future = { ...post, createdAt: "2028-01-01T00:00:00Z" };
+  const old = { ...post, createdAt: "2024-01-01T00:00:00Z" };
+  const invalid = { ...post, createdAt: "not-a-date" };
+  const base = recommendationScore(emptyInterestState, recent, rankingNow);
+  assert.equal(recommendationScore(emptyInterestState, future, rankingNow), base);
+  assert.ok(recommendationScore(emptyInterestState, old, rankingNow) < base);
+  assert.ok(recommendationScore(emptyInterestState, invalid, rankingNow) < base);
+});
+
+test("For You diversifies authors and communities when alternatives exist", () => {
+  const sameAuthor = Array.from({ length: 5 }, (_, i) => ({
+    ...posts[0],
+    id: `same-${i}`,
+  }));
+  const alternatives = [
+    { ...posts[2], id: "student-alternative" },
+    { ...posts[4], id: "cafe-alternative" },
+  ];
+  const result = rankForYou(emptyInterestState, [...sameAuthor, ...alternatives], rankingNow);
+  for (let i = 2; i < result.length; i++) {
+    const triple = result.slice(i - 2, i + 1);
+    assert.ok(
+      !(triple.every((p) => authorId(p) === authorId(triple[0])) &&
+        triple.every((p) => p.community === triple[0].community) &&
+        i < 5),
+      "early feed should break repeated same-author/community streaks",
+    );
+  }
+});
+
+test("For You respects safety and search filters before ranking, City remains chronological", () => {
+  const blocked = { ...emptyInterestState, blocked: [authorId(posts[0])] };
+  const options = {
+    mode: "explore",
+    kind: "all",
+    neighborhood: "",
+    query: "",
+    now: rankingNow,
+  };
+  assert.ok(!visiblePosts(blocked, posts, options).some((p) => p.id === posts[0].id));
+  assert.ok(!visiblePosts(emptyInterestState, posts, { ...options, query: "nonexistent-search-string" }).length);
+  assert.deepEqual(
+    visiblePosts(emptyInterestState, posts, { ...options, mode: "city" }).map((p) => p.id),
+    posts.map((p) => p.id),
   );
 });
