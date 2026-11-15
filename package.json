@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "format": "prettier --write src docs *.md *.json *.mjs",
-    "test:security": "tsx --test scripts/authorization.test.ts",
+    "test:security": "tsx --test scripts/authorization.test.ts scripts/migration.test.ts",
     "appwrite:inspect": "node --env-file-if-exists=.env.local --import tsx scripts/appwrite-inspect.ts",
     "test:operations": "tsx --test scripts/operations.test.ts",
     "launch:preflight": "node --env-file-if-exists=.env.local --import tsx scripts/vercel-preview.ts",
@@ -23,7 +23,9 @@
     "test:deployment": "tsx --test scripts/deployment-target.test.ts",
     "test:social": "tsx --test scripts/social-demo.test.ts scripts/multiuser.test.ts",
     "test:multiuser": "tsx --test scripts/multiuser.test.ts",
-    "test:live": "node --env-file-if-exists=.env.local --import tsx scripts/live-two-user.ts"
+    "test:live": "node --env-file-if-exists=.env.local --import tsx scripts/live-two-user.ts",
+    "migration:plan": "tsx scripts/migration-plan.ts",
+    "test:migration": "tsx --test scripts/migration.test.ts"
   },
   "dependencies": {
     "@vercel/firewall": "^1.2.6",

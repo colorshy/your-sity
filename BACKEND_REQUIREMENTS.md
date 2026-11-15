@@ -108,3 +108,7 @@ The preview callback origin may be derived from trusted VERCEL_URL metadata; pro
 ## MVP 3 multi-user additive contract
 
 Apply the inspect-first, non-destructive migration in [docs/migrations/MVP_3_APPWRITE.md](docs/migrations/MVP_3_APPWRITE.md) to the existing database through authorized backend administration. It adds nullable comment parent IDs and server-private likes, bookmarks, connections and notifications. This migration is prepared, **not applied or live-verified** by Codex. Missing metadata fails closed; no localStorage fallback is used in authenticated routes. See [beta acceptance](docs/product/MULTIUSER_BETA.md).
+
+## MVP 3.1 operator-ready migration preparation
+
+The offline planner, exact export format, blockers and operator-only sequence are documented in [MVP_31_READINESS.md](docs/migrations/MVP_31_READINESS.md). No cloud schema mutations or administrator credential requests are authorized for Codex in this task. Preserve existing records/grants/IDs. Apply approved missing resources separately, replan to zero operations and then validate real query/transaction/row-access behavior on the authorized Preview. Runtime now also rejects non-null defaults on nullable additions and wrong Frankfurt project/database/endpoint configuration.

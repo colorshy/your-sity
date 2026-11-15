@@ -43,5 +43,6 @@ export async function requireResident() {
   const context = await requireService();
   const profile = await context.service.ensureProfile();
   if (!profile.onboarded) redirect("/onboarding");
+  await context.service.resident();
   return { ...context, profile };
 }

@@ -2,7 +2,7 @@ export const deploymentTarget = {
   projectId: "prj_I9ANo3tGUECTuC53MeDAmURntFIh",
   projectName: "your-city",
   repository: "colorshy/your-sity",
-  branch: "feat/milestone-4-launch",
+  branch: "feat/mvp-3-multiuser",
 } as const;
 export type ProjectIdentity = {
   id: string;
@@ -51,6 +51,7 @@ export function auditDeploymentTarget(
     "APPWRITE_ENDPOINT",
     "APPWRITE_PROJECT_ID",
     "APPWRITE_DATABASE_ID",
+    "APPWRITE_MODERATOR_IDS",
     "VERCEL_AUTH_RATE_LIMIT_ID",
     "VERCEL_WRITE_RATE_LIMIT_ID",
   ])
@@ -107,9 +108,10 @@ export function verifyPreviewReadback(value: unknown, sha: string) {
       : {};
   if (
     projectId !== deploymentTarget.projectId ||
-    d.target === "production" ||
+    (d.target !== null && d.target !== "preview") ||
     d.readyState !== "READY" ||
     meta.releaseCommit !== sha ||
+    meta.releaseBranch !== deploymentTarget.branch ||
     typeof d.id !== "string"
   )
     throw new Error("Deployment identity/state/source not verified");

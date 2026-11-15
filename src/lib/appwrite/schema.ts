@@ -132,10 +132,25 @@ export function inspectSchema(
         (table === "reports" && field === "comment_id") ||
         (table === "notifications" &&
           ["post_id", "comment_id"].includes(field))) &&
-      c.required
+      (c.required || c.default != null)
     )
       throw new Error(
-        "Nullable column must be optional: " + table + "." + field,
+        "Nullable column must be optional with null default: " +
+          table +
+          "." +
+          field,
+      );
+    if (
+      ["post_likes", "bookmarks", "connections", "notifications"].includes(
+        table,
+      ) &&
+      !(
+        table === "notifications" && ["post_id", "comment_id"].includes(field)
+      ) &&
+      (!c.required || c.default != null)
+    )
+      throw new Error(
+        "Required column contract mismatch: " + table + "." + field,
       );
     const capacity =
       c.size ??

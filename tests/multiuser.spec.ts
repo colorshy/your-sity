@@ -7,19 +7,20 @@ async function account(
   name: string,
   password: string,
 ) {
-  await page.goto(live ? "/sign-in" : "/sign-up");
+  const signup = !live || process.env.BETA_REGISTER_ACCOUNTS === "1";
+  await page.goto(signup ? "/sign-up" : "/sign-in");
   if ((await page.locator("html").getAttribute("lang")) === "kk")
     await page.getByRole("button", { name: "РУС", exact: true }).click();
-  if (!live) await page.locator('input[name="name"]').fill(name);
+  if (signup) await page.locator('input[name="name"]').fill(name);
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
   await page
     .getByRole("button", {
-      name: live ? "Войти" : "Зарегистрироваться",
+      name: signup ? "Зарегистрироваться" : "Войти",
       exact: true,
     })
     .click();
-  if (!live) {
+  if (signup) {
     await expect(page).toHaveURL(/\/onboarding$/);
     await page.locator('input[value="events"]').check();
     await page.getByRole("button", { name: "Сохранить", exact: true }).click();
@@ -37,10 +38,40 @@ test(
   live
     ? "authorized live two-account beta smoke"
     : "two isolated accounts share server social data (local Appwrite fixture)",
-  async ({ browser, baseURL }, info) => {
+  async (
+    { browser, baseURL, viewport, isMobile, hasTouch, userAgent },
+    info,
+  ) => {
     test.setTimeout(180000);
-    const a = await browser.newContext({ baseURL }),
-      b = await browser.newContext({ baseURL });
+    const a = await browser.newContext({
+        baseURL,
+        extraHTTPHeaders:
+          live && process.env.BETA_PREVIEW_BYPASS
+            ? { "x-vercel-protection-bypass": process.env.BETA_PREVIEW_BYPASS }
+            : {},
+        viewport: viewport ?? undefined,
+        isMobile,
+        hasTouch,
+        userAgent,
+      }),
+      b = await browser.newContext({
+        baseURL,
+        extraHTTPHeaders:
+          live && process.env.BETA_PREVIEW_BYPASS
+            ? { "x-vercel-protection-bypass": process.env.BETA_PREVIEW_BYPASS }
+            : {},
+        viewport: viewport ?? undefined,
+        isMobile,
+        hasTouch,
+        userAgent,
+      });
+    if (live)
+      for (const context of [a, b])
+        await context.route("**/*", (route) =>
+          new URL(route.request().url()).origin === new URL(baseURL!).origin
+            ? route.continue()
+            : route.abort(),
+        );
     const alice = await a.newPage(),
       bob = await b.newPage();
     for (const page of [alice, bob]) {

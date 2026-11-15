@@ -20,3 +20,7 @@ New like/bookmark IDs: first 32 hex SHA256(JSON.stringify([userId, postId])). Co
 4. Use two disposable consenting test accounts and separate browser contexts against the authorized non-production app. Follow docs/product/MULTIUSER_BETA.md. Record actual endpoint, code SHA, date, checks and cleanup. Local fixture tests are not evidence of hosted Appwrite compatibility.
 
 Rollback application code before removing any schema support. Leave additive tables/columns and their real data intact; do not drop or clear them. Do not publish, change Vercel configuration or enable a real student pilot before live acceptance.
+
+## MVP 3.1 executable preparation
+
+Use the offline, non-executing planner and exact operator handoff in [MVP_31_READINESS.md](MVP_31_READINESS.md). `npm run migration:plan -- --snapshot <complete-metadata.json>` emits only missing additive operations and rejects incompatible/pending metadata; `npm run test:migration` verifies idempotent convergence. Codex does not execute cloud schema mutations. All nullable additions must also have a null/unset default; required fields in the new social tables must be required with no schema default.
