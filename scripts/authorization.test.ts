@@ -271,3 +271,31 @@ test("schema supports Appwrite varchar/text columns without weakening content bo
     }),
   );
 });
+
+test("catalog projection exposes existing category without enabling category writes or leaking extra row fields", async () => {
+  let writes = 0;
+  const fake = {
+    updateRow: async () => {
+      writes++;
+      throw new Error("Unexpected write");
+    },
+    getRow: async () => ({
+      $id: "events",
+      $createdAt: "2026-01-01",
+      name_ru: "События",
+      category: "city",
+      private_note: "never project",
+    }),
+  } as unknown as TablesDB;
+  const repo = new AppwriteRepository(fake, "your_city_db", {
+    communities: { keys: { name_ru: "name_ru" } },
+  } as never);
+  const row = await repo.get("communities", "events");
+  assert.equal(row?.category, "city");
+  assert.equal(row?.description_ru, "");
+  assert.equal(row && "private_note" in row, false);
+  await assert.rejects(
+    repo.update("communities", "events", { category: "forged" }),
+  );
+  assert.equal(writes, 0);
+});

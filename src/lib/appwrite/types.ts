@@ -9,6 +9,7 @@ export type Profile = Base & {
 };
 export type City = Base & { name_kk: string; name_ru: string };
 export type Community = City & {
+  category?: string;
   city_id: string;
   description_kk: string;
   description_ru: string;

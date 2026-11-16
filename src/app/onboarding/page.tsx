@@ -26,12 +26,19 @@ export default async function Page({
     <Shell>
       <section className="form-panel">
         <h1>{t("Қош келдіңіз", "Добро пожаловать")}</h1>
+        <p>
+          {t(
+            "Атыңызды және тіліңізді таңдаңыз. Содан кейін қала лентасына өтесіз.",
+            "Выберите имя и язык. После сохранения вы перейдёте в ленту города.",
+          )}
+        </p>
         <Notice {...await searchParams} />
         <form action={onboard}>
           <label>
             {t("Атыңыз", "Имя")}
             <input
               name="name"
+              autoComplete="nickname"
               required
               minLength={2}
               maxLength={80}
@@ -55,7 +62,10 @@ export default async function Page({
           </label>
           <fieldset>
             <legend>
-              {t("Қауымдастықтарды таңдаңыз", "Выберите сообщества")}
+              {t(
+                "Қауымдастықтарды таңдаңыз · міндетті емес",
+                "Выберите сообщества · необязательно",
+              )}
             </legend>
             {communities.map((c) => (
               <label key={c.id} className="choice">
