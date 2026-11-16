@@ -2,6 +2,11 @@
 import { spawnSync } from "node:child_process";
 import { Vercel } from "@vercel/sdk";
 import { configureTransport } from "../src/lib/appwrite/transport";
+import {
+  deploymentTarget,
+  previewProtectionEnabled,
+  type ProjectIdentity,
+} from "../src/lib/operations/deployment-target";
 import { verifyBetaPreview } from "../src/lib/operations/beta-preview";
 const required = [
   "BETA_BASE_URL",
@@ -53,9 +58,17 @@ async function main() {
       timeoutMs: 15000,
       retryConfig: { strategy: "none" },
     });
+    const scope = process.env.VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID;
+    if (scope && scope !== deploymentTarget.teamId) throw new Error();
+    const project = await api.projects.getProject({
+      idOrName: deploymentTarget.projectId,
+      teamId: deploymentTarget.teamId,
+    });
+    if (!previewProtectionEnabled(project as ProjectIdentity))
+      throw new Error();
     const metadata = await api.deployments.getDeployment({
       idOrUrl: url.hostname,
-      teamId: process.env.VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID,
+      teamId: deploymentTarget.teamId,
     });
     const verified = verifyBetaPreview(
       metadata,

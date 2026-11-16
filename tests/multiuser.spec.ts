@@ -288,6 +288,9 @@ test(
       await bob
         .getByRole("button", { name: "Выйти из аккаунта", exact: true })
         .click();
+      // Let the server action revoke the session and finish its redirect before
+      // starting another navigation, which can otherwise cancel the action.
+      await expect(bob).toHaveURL(/\/sign-in$/);
       await bob.goto("/notifications");
       await expect(bob).toHaveURL(/\/sign-in$/);
       await alice.goto("/profile");
