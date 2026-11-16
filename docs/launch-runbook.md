@@ -36,3 +36,9 @@ The official @vercel/firewall checker uses a trusted VERCEL_URL destination and 
 Operational JSON logs contain only enumerated event/result/kind and timestamp, not credentials, cookies, request bodies, IPs, emails or raw provider errors. Authentication attempt success/failure and readiness/abuse checks are logged. Security response headers protect framing, MIME sniffing, base/form/object embedding and verification-token referrers; they do not constitute proof against every XSS/abuse scenario.
 
 .github/workflows/ci.yml runs only non-secret local/fixture checks with read-only GitHub permissions; it does not deploy or contact the real backend. CI execution is not claimed verified merely because the workflow was pushed. Vercel/account access and real backend verification remain external blockers, not an application test failure.
+
+## MVP 3.5 release target and current authority
+
+This section supersedes historical branch targeting above. The existing project/team are now pinned to `feat/mvp-34-product-experience`; no older Preview qualifies without exact source readback. The operator reports the additive migration already applied: **do not reapply it**. Use the read-only preflight to verify actual hosted metadata when access is available.
+
+See [MVP_35_LIVE_ACCEPTANCE.md](product/MVP_35_LIVE_ACCEPTANCE.md) for current evidence, safe deployment/SSO access sequence and exact blockers. The launcher requires Preview SSO protection and current-branch environment scope, refuses another team and conflicting Git metadata, and never creates a project or deploys Production. The live runner also checks project protection before readiness/credentials. Hosted CI and hosted integration must be observed independently of local test results.

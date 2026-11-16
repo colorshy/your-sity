@@ -3195,3 +3195,86 @@ body > main {
     gap: 0.75rem;
   }
 }
+
+/* Product experience: accessible real-account discovery and publishing. */
+.discovery-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.discovery-controls label {
+  flex: 1 1 220px;
+  display: grid;
+  gap: 0.5rem;
+}
+.discovery-controls input,
+.discovery-controls select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d5ddd7);
+  border-radius: 12px;
+  background: white;
+}
+.discovery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+}
+.discovery-grid .community-grid {
+  display: block;
+  height: 100%;
+}
+.discovery-grid .community-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+.discovery-grid .community-card form {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+.membership-state {
+  font-weight: 600;
+  color: #35654a;
+}
+.field-hint {
+  font-size: 0.875rem;
+  color: #526359;
+}
+.post-composer textarea {
+  min-height: 200px;
+  resize: vertical;
+}
+body > main .form-panel {
+  width: min(100%, 650px);
+}
+body > .topbar a,
+body > .topbar button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+body > main button {
+  min-height: 44px;
+}
+body > main :focus-visible,
+body > .topbar :focus-visible {
+  outline: 3px solid #36805b;
+  outline-offset: 3px;
+}
+.discovery-grid .community-card {
+  min-height: 0;
+  padding: 24px;
+  gap: 0.5rem;
+}
+.discovery-grid .community-card p {
+  margin-block: 0.4rem;
+  min-height: 0;
+}
+.discovery-grid .community-card p:empty {
+  display: none;
+}

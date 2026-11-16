@@ -2,19 +2,34 @@ export const deploymentTarget = {
   projectId: "prj_I9ANo3tGUECTuC53MeDAmURntFIh",
   projectName: "your-city",
   repository: "colorshy/your-sity",
-  branch: "feat/mvp-3-multiuser",
+  branch: "feat/mvp-34-product-experience",
+  teamId: "team_jmYWtlOQ0orAIYZeWc3LUOrR",
 } as const;
 export type ProjectIdentity = {
   id: string;
   name: string;
   accountId: string;
   link?: { type: string; org?: string; repo?: string };
+  ssoProtection?: { deploymentType: string } | null;
 };
 export type EnvironmentMetadata = {
   key: string;
   target?: string | string[];
   gitBranch?: string | null;
 };
+/** Project metadata from Vercel, never inferred from a login page or caller headers. */
+export function previewProtectionEnabled(project: ProjectIdentity) {
+  return (
+    project.id === deploymentTarget.projectId &&
+    project.accountId === deploymentTarget.teamId &&
+    [
+      "all",
+      "preview",
+      "all_except_custom_domains",
+      "prod_deployment_urls_and_all_previews",
+    ].includes(project.ssoProtection?.deploymentType ?? "")
+  );
+}
 export function auditDeploymentTarget(
   project: ProjectIdentity,
   envs: EnvironmentMetadata[],
@@ -22,7 +37,7 @@ export function auditDeploymentTarget(
   if (
     project.id !== deploymentTarget.projectId ||
     project.name !== deploymentTarget.projectName ||
-    !project.accountId
+    project.accountId !== deploymentTarget.teamId
   )
     throw new Error("Deployment target identity mismatch");
   const issues: string[] = [];
@@ -33,6 +48,8 @@ export function auditDeploymentTarget(
     project.link.repo !== "your-sity"
   )
     issues.push("github-link-conflict");
+  if (!previewProtectionEnabled(project))
+    issues.push("preview-protection-unverified");
   const previewKeys = [
     ...new Set(
       envs
@@ -56,6 +73,12 @@ export function auditDeploymentTarget(
     "VERCEL_WRITE_RATE_LIMIT_ID",
   ])
     if (!previewKeys.includes(key)) issues.push("preview-env-missing:" + key);
+  for (const key of [
+    "NEXT_PUBLIC_APPWRITE_API_KEY",
+    "NEXT_PUBLIC_VERCEL_TOKEN",
+    "VERCEL_TOKEN",
+  ])
+    if (previewKeys.includes(key)) issues.push("forbidden-preview-env:" + key);
   return {
     projectId: project.id,
     projectName: project.name,
@@ -64,14 +87,17 @@ export function auditDeploymentTarget(
       ? `${project.link.org ?? ""}/${project.link.repo ?? ""}`
       : null,
     previewKeys,
+    protection: previewProtectionEnabled(project)
+      ? "project-sso-enabled"
+      : "unverified",
+    canonicalOriginSource: previewKeys.includes("NEXT_PUBLIC_SITE_URL")
+      ? "explicit-preview-value-unverified"
+      : "trusted-vercel-url",
     issues,
   };
 }
 export function previewArguments(accountId: string, sha: string) {
-  if (
-    !/^[A-Za-z0-9][A-Za-z0-9_-]{2,127}$/.test(accountId) ||
-    !/^[a-f0-9]{40}$/.test(sha)
-  )
+  if (accountId !== deploymentTarget.teamId || !/^[a-f0-9]{40}$/.test(sha))
     throw new Error("Invalid verified deployment identity");
   return [
     "deploy",
@@ -112,6 +138,9 @@ export function verifyPreviewReadback(value: unknown, sha: string) {
     d.readyState !== "READY" ||
     meta.releaseCommit !== sha ||
     meta.releaseBranch !== deploymentTarget.branch ||
+    (meta.githubCommitSha !== undefined && meta.githubCommitSha !== sha) ||
+    (meta.githubCommitRef !== undefined &&
+      meta.githubCommitRef !== deploymentTarget.branch) ||
     typeof d.id !== "string"
   )
     throw new Error("Deployment identity/state/source not verified");

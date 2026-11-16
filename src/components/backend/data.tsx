@@ -19,6 +19,16 @@ export async function CommunityCards({
             <h2>{c[locale === "kk" ? "name_kk" : "name_ru"]}</h2>
           </Link>
           <p>{c[locale === "kk" ? "description_kk" : "description_ru"]}</p>
+          <p className="membership-state">
+            {joined.includes(c.id)
+              ? t("Сіз мүшесіз", "Вы участник")
+              : t("Әзірге қосылмадыңыз", "Вы ещё не участник")}
+          </p>
+          {c.category && (
+            <span className="chip">
+              {c.category === "city" ? t("Қала", "Город") : c.category}
+            </span>
+          )}
           <form action={membership}>
             <input type="hidden" name="community" value={c.id} />
             <input

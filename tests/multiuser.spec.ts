@@ -288,6 +288,9 @@ test(
       await bob
         .getByRole("button", { name: "Выйти из аккаунта", exact: true })
         .click();
+      // Let the server action revoke the session and finish its redirect before
+      // starting another navigation, which can otherwise cancel the action.
+      await expect(bob).toHaveURL(/\/sign-in$/);
       await bob.goto("/notifications");
       await expect(bob).toHaveURL(/\/sign-in$/);
       await alice.goto("/profile");
@@ -315,3 +318,64 @@ test(
     }
   },
 );
+
+test("discovery and composer guide a new resident without demo content", async ({
+  page,
+}, info) => {
+  test.skip(live, "Local regression uses disposable fixture accounts only");
+  await page.goto("/sign-up");
+  await page.getByRole("button", { name: "РУС", exact: true }).click();
+  await page.locator('input[name="name"]').fill("UX Resident");
+  await page
+    .locator('input[name="email"]')
+    .fill(`ux-${info.project.name}-${randomUUID()}@example.test`);
+  await page.locator('input[name="password"]').fill("Test-password-123!");
+  await page
+    .getByRole("button", { name: "Зарегистрироваться", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await page.goto("/create");
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(
+    page.getByText("Выберите сообщества · необязательно"),
+  ).toBeVisible();
+  await page.locator('input[value="events"]').check();
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(page).toHaveURL(/\/feed$/);
+  await page.goto("/communities");
+  const search = page.getByRole("searchbox");
+  await search.fill("zzzz-no-community");
+  await expect(
+    page.getByRole("heading", { name: "Сообщества не найдены" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Сбросить", exact: true }).click();
+  await expect(page.locator("article").first()).toBeVisible();
+  await expect(
+    page.locator('a[href="/communities/events"]').locator(".."),
+  ).toContainText("Вы участник");
+  await page
+    .getByRole("combobox", { name: "Категория", exact: true })
+    .selectOption("city");
+  await expect(page.locator("article").first()).toBeVisible();
+  await search.fill("сОбЫтИя");
+  await expect(page.locator("article")).toHaveCount(1);
+  await expect(page.locator("article")).toContainText("События");
+  await page.goto("/create");
+  const publish = page.getByRole("button", {
+    name: "Опубликовать",
+    exact: true,
+  });
+  await expect(publish).toBeDisabled();
+  await page.getByRole("textbox", { name: "Текст", exact: true }).fill("   ");
+  await expect(publish).toBeDisabled();
+  await page
+    .getByRole("textbox", { name: "Текст", exact: true })
+    .fill("Сәлем, көршілер!");
+  await expect(publish).toBeEnabled();
+  await expect(page.locator("#post-counter")).toContainText("16 / 5000");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

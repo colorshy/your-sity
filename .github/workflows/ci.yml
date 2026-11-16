@@ -2,7 +2,7 @@ name: Application checks
 on:
   pull_request:
   push:
-    branches: [feat/milestone-4-launch]
+    branches: [feat/milestone-4-launch, feat/mvp-34-product-experience]
   workflow_dispatch:
 permissions:
   contents: read

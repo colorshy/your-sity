@@ -5,11 +5,13 @@ import {
   deploymentTarget,
   previewArguments,
   verifyPreviewReadback,
+  previewProtectionEnabled,
 } from "../src/lib/operations/deployment-target";
 const project = {
   id: deploymentTarget.projectId,
   name: "your-city",
-  accountId: "team_verified",
+  accountId: deploymentTarget.teamId,
+  ssoProtection: { deploymentType: "all" },
   link: { type: "github", org: "colorshy", repo: "your-sity" },
 };
 const keys = [
@@ -98,6 +100,8 @@ test("deployment readback verifies project, source SHA and READY preview status"
     { readyState: "ERROR" },
     { projectId: "prj_other" },
     { meta: { releaseCommit: "b".repeat(40) } },
+    { meta: { ...base.meta, githubCommitSha: "b".repeat(40) } },
+    { meta: { ...base.meta, githubCommitRef: "feat/mvp-3-multiuser" } },
   ])
     assert.throws(() => verifyPreviewReadback({ ...base, ...delta }, sha));
 });
@@ -141,4 +145,66 @@ test("beta writes require verified exact Preview URL, branch, project, SHA and n
     "https://user@your-city-verified.vercel.app",
   ])
     assert.throws(() => verifyBetaPreview(base, origin, sha));
+});
+
+test("release target is MVP 3.4 and refuses another team or unverified Preview protection", () => {
+  assert.equal(deploymentTarget.branch, "feat/mvp-34-product-experience");
+  assert.throws(() =>
+    auditDeploymentTarget({ ...project, accountId: "team_other" }, metadata),
+  );
+  assert.throws(() => previewArguments("team_other", "a".repeat(40)));
+  for (const ssoProtection of [
+    undefined,
+    null,
+    { deploymentType: "production" },
+  ]) {
+    assert.equal(
+      previewProtectionEnabled({ ...project, ssoProtection }),
+      false,
+    );
+    assert.ok(
+      auditDeploymentTarget(
+        { ...project, ssoProtection },
+        metadata,
+      ).issues.includes("preview-protection-unverified"),
+    );
+  }
+  for (const deploymentType of [
+    "all",
+    "preview",
+    "all_except_custom_domains",
+    "prod_deployment_urls_and_all_previews",
+  ])
+    assert.equal(
+      previewProtectionEnabled({
+        ...project,
+        ssoProtection: { deploymentType },
+      }),
+      true,
+    );
+});
+
+test("deployment audit rejects client-exposed keys and deployment credentials in Preview runtime", () => {
+  for (const key of [
+    "NEXT_PUBLIC_APPWRITE_API_KEY",
+    "NEXT_PUBLIC_VERCEL_TOKEN",
+    "VERCEL_TOKEN",
+  ])
+    assert.ok(
+      auditDeploymentTarget(project, [
+        ...metadata,
+        { key, target: ["preview"] },
+      ]).issues.includes("forbidden-preview-env:" + key),
+    );
+  assert.equal(
+    auditDeploymentTarget(project, metadata).canonicalOriginSource,
+    "trusted-vercel-url",
+  );
+  assert.equal(
+    auditDeploymentTarget(project, [
+      ...metadata,
+      { key: "NEXT_PUBLIC_SITE_URL", target: ["preview"] },
+    ]).canonicalOriginSource,
+    "explicit-preview-value-unverified",
+  );
 });

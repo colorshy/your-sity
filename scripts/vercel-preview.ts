@@ -74,29 +74,13 @@ async function main() {
   });
   let stage = "project-discovery";
   try {
-    let project;
     const scope = process.env.VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID;
-    try {
-      project = await client.projects.getProject({
-        idOrName: deploymentTarget.projectId,
-        teamId: scope,
-      });
-    } catch (error) {
-      if (scope || ![403, 404].includes(status(error) ?? 0)) throw error;
-      const teams = await client.teams.getTeams({ limit: 100 });
-      for (const team of teams.teams) {
-        try {
-          project = await client.projects.getProject({
-            idOrName: deploymentTarget.projectId,
-            teamId: team.id,
-          });
-          break;
-        } catch (error) {
-          if (![403, 404].includes(status(error) ?? 0)) throw error;
-        }
-      }
-      if (!project) throw new Error("Project unavailable in authorized scopes");
-    }
+    if (scope && scope !== deploymentTarget.teamId)
+      throw new Error("Unexpected team scope");
+    const project = await client.projects.getProject({
+      idOrName: deploymentTarget.projectId,
+      teamId: deploymentTarget.teamId,
+    });
     stage = "environment-metadata";
     const remote = await client.projects.filterProjectEnvs({
       idOrName: deploymentTarget.projectId,
@@ -204,6 +188,16 @@ async function main() {
         : undefined,
     });
     const verified = verifyPreviewReadback(deployment, sha);
+    // Recheck protection after deployment; never alter project protection settings.
+    const after = await client.projects.getProject({
+      idOrName: deploymentTarget.projectId,
+      teamId: deploymentTarget.teamId,
+    });
+    if (
+      auditDeploymentTarget(after as ProjectIdentity, metadataEntries(remote))
+        .issues.length
+    )
+      throw new Error("Preview protection or project identity changed");
     if (git("rev-parse", "HEAD") !== sha || git("status", "--porcelain"))
       throw new Error("Source changed during deployment");
     console.log(
@@ -215,6 +209,7 @@ async function main() {
         deploymentId: verified.deploymentId,
         productionReleased: false,
         liveAcceptance: "not-run",
+        protection: "project-sso-enabled",
       }),
     );
   } catch (error) {

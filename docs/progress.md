@@ -296,3 +296,68 @@ Added an independent eleven-table post-migration metadata model with the reporte
 Updated backend requirements and historical migration/readiness notices to state operator-reported completion and explicitly prohibit replaying the already applied migration. No Appwrite tool was exposed and APPWRITE_API_KEY/.env.local were absent (presence-only check); actual hosted metadata/data access was not attempted or claimed. Local full-schema acceptance is distinct from actual Appwrite readback.
 
 Executed clean npm ci (383 packages), lint, typecheck and production build successfully. Domain/security **31/31**, social **28/28**, explicit migration **9/9**, operations **12/12**, deployment **6/6** passed. Full browser suite **60/60 passed** across desktop/tablet/mobile, including isolated-account SDK fixture tests with required legacy catalog columns; fixture results are local only. No Production deployment or merge. Implementation commit `5ccc9f65606b9168b850fdffc7c76f5566c439d6` pushed to feat/mvp-3-multiuser; native remote readback matched exactly. REST PATCH updating existing PR #4 returned Forbidden, so its description could not be updated; the branch push succeeded. Prepared description: `/tmp/your-city-33-pr.md`. This documentation follow-up records delivery; final SHA is reported in the task response. Hosted Appwrite readback and authorized HTTPS Preview two-account acceptance remain unverified; no remote CI result is claimed.
+
+## MVP 3.4 — product experience upgrade — 2026-11-16
+
+- Fetched `feat/mvp-3-multiuser` and verified its tip is exactly `21f589f9363dac8122069fc3c12a47caa0c8d9ad`; created the separate `feat/mvp-34-product-experience` branch in the existing clean checkout.
+- Inspected real Appwrite routes, schema compatibility, repository projection, service/session/ownership guards, transactional posting and existing security/social/migration/browser tests before editing. No replacement backend, migrations, cloud permission changes, Vercel configuration changes or production deployment.
+- `/communities`: instant case-insensitive search across actual bilingual names/descriptions, existing category metadata, reset control, result announcements, helpful empty state, explicit membership status and responsive cards/controls. The existing city-scoped catalog remains bounded to 100 rows; the interface discloses that boundary at the limit. Existing global loading UI remains active. Category is read-only and no private fields are added to the projection.
+- `/sign-up`, `/sign-in`, `/onboarding`: welcoming RU/KK guidance, password requirements and explicit optional community selection. Existing field validation, Shymkent contract, verified session checks, profile/language setup and feed transition are preserved. Community choices remain actual available backend rows; no fabricated recommendations or activity.
+- `/create`: extracted mobile-first text composer, 5,000-character count/limit, whitespace-only submission prevention, descriptive privacy/text-only guidance and localized pending label with disabled submission. Existing server validation, membership/ownership checks and transactional writes remain authoritative; success still opens the created post. Pending-state protection prevents repeat clicks while the action is in flight; this is not a claim of server-wide idempotency across independent requests.
+- Shared real-account polish: consistent touch targets, visible keyboard focus, readable controls, responsive discovery grid and composer sizing. Demo routes and fixtures remain explicitly separate.
+- Photo uploads intentionally unavailable: no authorized storage bucket/access/image-processing/moderation contract exists. Exact proposed limits, actor/access checks, private quarantine, metadata stripping, attachment lifecycle and two-user abuse tests are documented in `BACKEND_REQUIREMENTS.md`. No backend administration was attempted.
+- New regression coverage checks onboarding cannot bypass `/create`, optional setup guidance, empty/reset/search/category behavior, account membership display, blank composer validation, character count and responsive width. Adapter regression checks read-only category projection, omission of extra row fields and rejection before an SDK write.
+
+### MVP 3.4 release gate
+
+Local SDK fixtures are not hosted Appwrite evidence. Hosted schema/permission verification, an immutable authorized Vercel Preview and real two-user acceptance remain required before a genuine closed beta. This milestone is not declared beta-ready. Catalogs over 100 communities need a separate bounded server search/pagination extension; photo attachments need the documented backend work.
+
+### MVP 3.4 exact local verification
+
+- `npm ci --cache /workspace/.npm-cache --no-audit --no-fund`: passed, 383 packages.
+- `npm run format`, plus Prettier for changed scripts/tests: passed; unrelated formatting was restored.
+- `npm run lint`: passed, zero warnings/errors. `npm run typecheck`: passed.
+- `npm run build`: passed; a final build after polish is recorded below.
+- `npm run test:security`: **32/32 passed**, including the new read-only catalog projection test. Its first test assertion expected an internal error string; corrected to assert rejection and zero SDK writes because the existing provider boundary intentionally redacts errors.
+- `npm run test:social`: **28/28 passed**. `npm run test:migration`: **9/9 passed** (also included in security). `npm run test:operations`: **12/12 passed**.
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test`: **60 passed, 3 failed** in the first full run (5.3 minutes). All three failures were the new scenario's test-only expectation of 15 instead of 16 characters for `Сәлем, көршілер!`; corrected the expectation.
+- Final targeted rerun `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm test -- --grep 'discovery and composer'`: **3/3 passed** (24.0 seconds), tablet/desktop/mobile, including added category/case-insensitive search assertions. All 63 distinct browser scenarios have passing results across the full run and corrected rerun; no claim of a second complete 63-test run.
+- Inspected mobile discovery/composer screenshots from the local SDK fixture. Screenshots stay outside Git. Common private-key/GitHub-token pattern scan on the tracked diff: zero matches; no new environment files or secrets. Browser output includes existing demo image loading warnings and development stream diagnostics; no additional failing browser cases.
+- Security/session/service authorization tests and existing browser flows confirm demo isolation, account-owned memberships/social data, onboarding route guards, transactional posting/ownership and moderation boundaries locally. No hosted Appwrite verification was attempted, in accordance with the repository's integration boundary.
+- Final `npm run build` after all UI polish: **passed**, all App Router routes compiled. Generated `next-env.d.ts` path churn restored; generated build output remains ignored.
+
+### MVP 3.4 publication and PR handoff
+
+- Implementation commit: `036fe4a874bc9e9e6a0fb3ae1ccfccb454c345a9`.
+- `git push -u origin feat/mvp-34-product-experience` succeeded. Independent `git ls-remote --heads origin feat/mvp-34-product-experience` returned that exact SHA.
+- Draft PR creation was attempted with the correct base/head, title and body. GitHub returned `Post "https://api.github.com/graphql": Forbidden`; no Draft PR was created. `gh auth status` also reports invalid API credentials. Git push access works independently; no tokens were printed or changed.
+- Exact retry from the repository, after GitHub API access is restored:
+
+  ```sh
+  gh pr create --repo colorshy/your-sity --base feat/mvp-3-multiuser --head feat/mvp-34-product-experience --draft --title "MVP 3.4: community discovery, onboarding and publishing UX" --body-file docs/product-experience-pr.md
+  ```
+
+- Browser handoff: <https://github.com/colorshy/your-sity/compare/feat/mvp-3-multiuser...feat/mvp-34-product-experience?expand=1>. Select **Create draft pull request**; intended title and exact review body are saved in `docs/product-experience-pr.md`.
+- The subsequent documentation-only commit records this verified publication and handoff; use the branch tip for the final delivery SHA. No merge or deployment was performed.
+
+## MVP 3.5 — live-release audit and acceptance — 2026-11-16
+
+- Started clean on `feat/mvp-34-product-experience`; verified local and remote source `9b7ced78e20e877c6e336561a2482b01bf569453`. Preserved PR #4/#5 without merging. The operator reports the eleven-table additive migration complete; no migration was reapplied and no cloud resources/settings were modified.
+- Inspected Appwrite configuration, secure cookies/local redirects, Account.get and onboarding guards, service ownership/transactions, private projections, Preview versus Production origin/rate-limit behavior, existing launch/preflight/live tests, and CI. Current audit, evidence and operator handoff are in `docs/product/MVP_35_LIVE_ACCEPTANCE.md`.
+- Fixed the release tool's stale branch from `feat/mvp-3-multiuser` to the current MVP 3.4 branch. Pinned existing Vercel team/project, refused unexpected scope, added Preview SSO verification before deployment/live credentials and protection readback after deployment, and reject conflicting GitHub SHA/ref metadata.
+- Preview environment audit now rejects client-exposed API keys and Vercel deploy credentials in application runtime, and identifies explicit canonical-origin values as unverified without decrypting them. Existing server auth/transactions/Firewall remain unchanged. Added regression tests and enabled the existing non-deploying CI workflow on pushes to this branch.
+- **Hosted Appwrite: BLOCKED.** Existing preflight exits 2, missing `APPWRITE_API_KEY`, zero network requests. No independent hosted schema/index/permission/query/transaction evidence. One credential-free service connection check failed at proxy CONNECT 403 (curl exit 56/HTTP 000).
+- **Vercel Preview: BLOCKED.** Metadata preflight exits 2, missing `VERCEL_TOKEN` or authenticated integration, zero network requests. A credential-free Vercel API check also failed at proxy CONNECT 403. No deployment command was executed, no immutable URL or deployment SHA is verified, and no SSO or Firewall setting was changed.
+- **Live two-account acceptance: BLOCKED.** `npm run test:live` exits 2 before network: no verified Preview URL/SHA, Vercel credential, supplied disposable A/B and moderator credentials, or explicit write opt-in. `npm run launch:smoke` exits 2 for missing verified `LIVE_BASE_URL`. No real resident accounts, fabricated live accounts, transactions or content writes were used.
+- **Hosted CI/PR state: UNVERIFIED.** GitHub GraphQL returned `Forbidden` for PR #5/check readback. Local Git read/push access is independent. No CI success is inferred from source publication.
+- Current selected runtime status confirms enforced restricted egress excluding both service APIs, with no runtime secrets/variables/outbound identities. No tool can apply running-environment access changes in this session. Required secure bindings, exact hosts and supported SSO automation method are documented; secret values were never requested in chat.
+- Verdict remains **NOT BETA READY** until actual hosted integration, real two-user/moderator permissions, mail/session behavior, concurrency/rollback, effective SSO and live Firewall acceptance pass. Production remains untouched.
+
+### MVP 3.5 local validation
+
+- Lint: passed with zero warnings/errors. Typecheck: passed. Production build and final build after release-tool changes: passed.
+- Security: **32/32**, social: **28/28**, migration: **9/9**, operations: **12/12**, deployment: **8/8**, all passed. Deployment regressions cover the current branch/team, missing protection, conflicting Git metadata and forbidden Preview key bindings.
+- First fresh full browser run: **62 passed, 1 failed** (4.8 minutes). The existing mobile two-account test did not wait for the logout server action's redirect before navigating again. Corrected the test to require `/sign-in` first, then verify protected `/notifications` denial and A's independent session. No session/auth code changed. A complete suite rerun after correction is recorded below.
+- Production client build scan: zero JavaScript files with `APPWRITE_API_KEY`, `VERCEL_TOKEN` or the fixture key marker. Changed-file common private-key/GitHub-token scan: zero matches. No credentials, generated builds, `.env`, `.vercel`, reports or screenshots committed.
+- **Final complete browser rerun after the correction: 63 passed, 0 failed (4.7 minutes)** across tablet/desktop/mobile. This is a single full run, not combined historical results. Final lint/typecheck also passed. `npm run format` passed; unrelated formatting was restored.
+- Final environment status reconfirmed both service hosts unavailable and no bound secrets/variables. Hosted acceptance remains blocked. Source and evidence are delivered on the existing feature branch; final Git SHA and independent remote readback are reported in the task response. No merge or deployment command.

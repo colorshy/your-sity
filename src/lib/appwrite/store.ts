@@ -21,6 +21,7 @@ export class AppwriteRepository implements Repository {
     for (const [field, key] of Object.entries(this.schemas[table].keys))
       value[field] = row[key];
     if (table === "communities") {
+      if (typeof row.category === "string") value.category = row.category;
       value.description_kk ??= "";
       value.description_ru ??= "";
     }
