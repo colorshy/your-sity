@@ -325,3 +325,17 @@ Local SDK fixtures are not hosted Appwrite evidence. Hosted schema/permission ve
 - Inspected mobile discovery/composer screenshots from the local SDK fixture. Screenshots stay outside Git. Common private-key/GitHub-token pattern scan on the tracked diff: zero matches; no new environment files or secrets. Browser output includes existing demo image loading warnings and development stream diagnostics; no additional failing browser cases.
 - Security/session/service authorization tests and existing browser flows confirm demo isolation, account-owned memberships/social data, onboarding route guards, transactional posting/ownership and moderation boundaries locally. No hosted Appwrite verification was attempted, in accordance with the repository's integration boundary.
 - Final `npm run build` after all UI polish: **passed**, all App Router routes compiled. Generated `next-env.d.ts` path churn restored; generated build output remains ignored.
+
+### MVP 3.4 publication and PR handoff
+
+- Implementation commit: `036fe4a874bc9e9e6a0fb3ae1ccfccb454c345a9`.
+- `git push -u origin feat/mvp-34-product-experience` succeeded. Independent `git ls-remote --heads origin feat/mvp-34-product-experience` returned that exact SHA.
+- Draft PR creation was attempted with the correct base/head, title and body. GitHub returned `Post "https://api.github.com/graphql": Forbidden`; no Draft PR was created. `gh auth status` also reports invalid API credentials. Git push access works independently; no tokens were printed or changed.
+- Exact retry from the repository, after GitHub API access is restored:
+
+  ```sh
+  gh pr create --repo colorshy/your-sity --base feat/mvp-3-multiuser --head feat/mvp-34-product-experience --draft --title "MVP 3.4: community discovery, onboarding and publishing UX" --body-file docs/product-experience-pr.md
+  ```
+
+- Browser handoff: <https://github.com/colorshy/your-sity/compare/feat/mvp-3-multiuser...feat/mvp-34-product-experience?expand=1>. Select **Create draft pull request**; intended title and exact review body are saved in `docs/product-experience-pr.md`.
+- The subsequent documentation-only commit records this verified publication and handoff; use the branch tip for the final delivery SHA. No merge or deployment was performed.
