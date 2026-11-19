@@ -49,6 +49,11 @@ export default async function Page({
           {t("Менің қауымдастықтарым", "Мои сообщества")}
         </Link>
       </nav>
+      <p>
+        <Link className="all-link" href="/discover">
+          {t("Қала қауымдастықтарын ашу", "Открыть сообщества города")} →
+        </Link>
+      </p>
       <PostList
         posts={posts.slice(0, 20)}
         authors={await service.authors(posts.slice(0, 20))}

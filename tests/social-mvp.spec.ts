@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-async function openRu(page: Page, path = "/") {
+async function openRu(page: Page, path = "/demo") {
   await page.goto(path);
   await expect(page.locator(".shell")).toHaveAttribute("aria-busy", "false");
   await page.getByRole("button", { name: "РУС", exact: true }).click();

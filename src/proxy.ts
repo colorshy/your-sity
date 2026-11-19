@@ -6,6 +6,8 @@ export function proxy(request: NextRequest) {
 }
 export const config = {
   matcher: [
+    "/",
+    "/discover",
     "/feed/:path*",
     "/saved",
     "/notifications",

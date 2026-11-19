@@ -361,3 +361,11 @@ Local SDK fixtures are not hosted Appwrite evidence. Hosted schema/permission ve
 - Production client build scan: zero JavaScript files with `APPWRITE_API_KEY`, `VERCEL_TOKEN` or the fixture key marker. Changed-file common private-key/GitHub-token scan: zero matches. No credentials, generated builds, `.env`, `.vercel`, reports or screenshots committed.
 - **Final complete browser rerun after the correction: 63 passed, 0 failed (4.7 minutes)** across tablet/desktop/mobile. This is a single full run, not combined historical results. Final lint/typecheck also passed. `npm run format` passed; unrelated formatting was restored.
 - Final environment status reconfirmed both service hosts unavailable and no bound secrets/variables. Hosted acceptance remains blocked. Source and evidence are delivered on the existing feature branch; final Git SHA and independent remote readback are reported in the task response. No merge or deployment command.
+
+## MVP 4.0 — Discover-first homepage
+
+- Replaced the public root with a bilingual Shymkent landing page, illustrative community themes, and account entry points. Kept the labeled fictional experience at `/demo`.
+- Improved the real Appwrite forms with localized pending feedback, validation, and generic failure states. Added protected Discover with actual city communities, membership context, and links into the existing authenticated experience.
+- Browser coverage includes both languages, small-screen layout, anonymous access, and fixture-backed signup, session, onboarding, and Discover. See [MVP 4.0 product and verification notes](product/MVP_40_DISCOVER_FIRST.md).
+- Hosted Firewall verification, two-user live acceptance, and Kazakhstan data residency review remain open. No Preview or Production deployment was created.
+- Fresh local checks passed. Lint, typecheck, and production build succeeded. Security 32/32, social 28/28, migration 9/9, operations 12/12, deployment 8/8, and Playwright 72/72 passed. The production build without Appwrite also passed a five-width browser smoke, account unavailability, and protected Discover redirection.

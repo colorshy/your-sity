@@ -62,7 +62,7 @@ test("live routes require authentication and demo content stays isolated", async
       page.locator(".form-panel > form input[name=email]"),
     ).toBeEnabled();
   }
-  await page.goto("/");
+  await page.goto("/demo");
   await expect(page.locator(".post")).toHaveCount(8);
   await expect(page.locator(".mvp-demo-badge")).toHaveText("DEMO");
   await page.goto("/sign-up");

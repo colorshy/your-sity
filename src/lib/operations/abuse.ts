@@ -24,8 +24,11 @@ export async function checkAbuse(kind: AbuseKind) {
   operationLog("abuse_check", result, kind);
   return result;
 }
-export async function guardAction(kind: AbuseKind) {
+export async function guardAction(
+  kind: AbuseKind,
+  errorPath = (code: "rate" | "unavailable") => "/sign-in?error=" + code,
+) {
   const result = await checkAbuse(kind);
-  if (result === "limited") redirect("/sign-in?error=rate");
-  if (result === "unavailable") redirect("/sign-in?error=unavailable");
+  if (result === "limited") redirect(errorPath("rate"));
+  if (result === "unavailable") redirect(errorPath("unavailable"));
 }

@@ -2,9 +2,32 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { sessionAccount, getRepository } from "./appwrite/server";
 import { CityService } from "./appwrite/service";
-export async function requireUser() {
+import { appwriteConfig } from "./appwrite/config";
+
+export async function hasVerifiedSession() {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (!appwriteConfig()) return false;
+    const account = await sessionAccount();
+    if (!account) return false;
+    return await Promise.race([
+      account.get().then(() => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), 800);
+      }),
+    ]);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+type SignInPath = "/sign-in" | "/sign-in?next=discover";
+
+export async function requireUser(signInPath: SignInPath = "/sign-in") {
   const account = await sessionAccount();
-  if (!account) redirect("/sign-in");
+  if (!account) redirect(signInPath);
   let user;
   try {
     user = await account.get();
@@ -15,7 +38,7 @@ export async function requireUser() {
       "code" in error &&
       (error.code === 401 || error.code === 403)
     )
-      redirect("/sign-in");
+      redirect(signInPath);
     throw new Error("Authentication service unavailable");
   }
   return {
@@ -27,8 +50,8 @@ export async function requireUser() {
     },
   };
 }
-export async function requireService() {
-  const context = await requireUser();
+export async function requireService(signInPath?: SignInPath) {
+  const context = await requireUser(signInPath);
   const service = new CityService(
     await getRepository(),
     context.user,
@@ -39,8 +62,8 @@ export async function requireService() {
   );
   return { ...context, service };
 }
-export async function requireResident() {
-  const context = await requireService();
+export async function requireResident(signInPath?: SignInPath) {
+  const context = await requireService(signInPath);
   const profile = await context.service.ensureProfile();
   if (!profile.onboarded) redirect("/onboarding");
   await context.service.resident();

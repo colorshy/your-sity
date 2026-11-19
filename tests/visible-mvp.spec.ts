@@ -5,7 +5,7 @@ test("open product navigation, localization, theme and responsive assets", async
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/demo");
   await expect(page.locator(".shell")).toHaveAttribute("aria-busy", "false");
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await expect(
@@ -147,7 +147,7 @@ test("local demo profile, post, comment, like and bookmark survive navigation an
 test("search, category filters, sorting and memberships work without authentication", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/demo");
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await page.getByRole("textbox", { name: "Поиск публикаций" }).fill("книги");
   await expect(page.locator(".post")).toHaveCount(2);
@@ -209,7 +209,7 @@ test("compact phone layouts and denied local storage remain usable", async ({
       throw new DOMException("Storage blocked", "SecurityError");
     };
   });
-  await page.goto("/");
+  await page.goto("/demo");
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("только в этом сеансе");
   await page

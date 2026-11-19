@@ -12,14 +12,16 @@ import {
   apiClient,
   getRepository,
 } from "@/lib/appwrite/server";
+import {
+  BackendUnavailableError,
+  providerCall,
+} from "@/lib/appwrite/provider-boundary";
 import { CityService } from "@/lib/appwrite/service";
 import { requireUser, requireService, requireResident } from "@/lib/auth";
 import { validEmail, validName } from "@/lib/validation";
 import { validId } from "@/lib/appwrite/policy";
 const value = (f: FormData, key: string) => String(f.get(key) ?? "");
-export async function setLocale(form: FormData) {
-  await guardAction("write");
-  const locale = value(form, "locale") === "ru" ? "ru" : "kk";
+async function saveLocale(locale: "ru" | "kk") {
   (await cookies()).set("city-locale", locale, {
     httpOnly: true,
     sameSite: "lax",
@@ -27,6 +29,14 @@ export async function setLocale(form: FormData) {
     path: "/",
     maxAge: 31536000,
   });
+}
+export async function setPublicLocale(form: FormData) {
+  await saveLocale(value(form, "locale") === "ru" ? "ru" : "kk");
+}
+export async function setLocale(form: FormData) {
+  await guardAction("write");
+  const locale = value(form, "locale") === "ru" ? "ru" : "kk";
+  await saveLocale(locale);
   const account = appwriteConfig()
     ? await import("@/lib/appwrite/server").then((m) => m.sessionAccount())
     : null;
@@ -44,10 +54,12 @@ export async function setLocale(form: FormData) {
   revalidatePath("/", "layout");
 }
 export async function authenticate(form: FormData) {
-  await guardAction("auth");
-  const signup = value(form, "mode") === "signup",
-    target = signup ? "/sign-up" : "/sign-in";
-  if (!appwriteConfig()) redirect(target + "?error=config");
+  const signup = value(form, "mode") === "signup";
+  const resumeDiscover = !signup && value(form, "next") === "discover";
+  const target = signup ? "/sign-up" : "/sign-in";
+  const errorPath = (code: string) =>
+    target + "?error=" + code + (resumeDiscover ? "&next=discover" : "");
+  await guardAction("auth", errorPath);
   const email = value(form, "email").trim(),
     password = value(form, "password"),
     name = value(form, "name").trim();
@@ -57,22 +69,28 @@ export async function authenticate(form: FormData) {
     password.length > 128 ||
     (signup && !validName(name))
   )
-    redirect(target + "?error=invalid");
-  let failed = false;
+    redirect(errorPath("invalid"));
+
   let openedSession: Account | null = null;
+  let sessionStored = false;
+  let failure: "auth" | "unavailable" | undefined;
+  let submittingCredentials = false;
   try {
     const repo = await getRepository();
+    submittingCredentials = true;
     if (signup)
-      await anonymousAccount().create({
-        userId: ID.unique(),
-        email,
-        password,
-        name,
-      });
-    const session = await new Account(apiClient()).createEmailPasswordSession({
-      email,
-      password,
-    });
+      await providerCall(() =>
+        anonymousAccount().create({
+          userId: ID.unique(),
+          email,
+          password,
+          name,
+        }),
+      );
+    const session = await providerCall(() =>
+      new Account(apiClient()).createEmailPasswordSession({ email, password }),
+    );
+    submittingCredentials = false;
     if (!session.secret || !Number.isFinite(Date.parse(session.expire)))
       throw new Error("Invalid session");
     (await cookies()).set(sessionCookie(), session.secret, {
@@ -82,10 +100,12 @@ export async function authenticate(form: FormData) {
       path: "/",
       expires: new Date(session.expire),
     });
-    const user = await (await import("@/lib/appwrite/server")).sessionAccount();
-    if (!user) throw new Error("Missing session");
-    openedSession = user;
-    const identity = await user.get();
+    sessionStored = true;
+    openedSession = await (
+      await import("@/lib/appwrite/server")
+    ).sessionAccount();
+    if (!openedSession) throw new Error("Missing session");
+    const identity = await openedSession.get();
     let profile = await new CityService(repo, {
       id: identity.$id,
       name: identity.name,
@@ -95,30 +115,25 @@ export async function authenticate(form: FormData) {
         (await cookies()).get("city-locale")?.value === "ru" ? "ru" : "kk";
       profile = await repo.update("profiles", profile.id, { locale });
     }
-    (await cookies()).set(
-      "city-locale",
-      profile.locale === "ru" ? "ru" : "kk",
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 31536000,
-      },
-    );
-  } catch {
-    failed = true;
+    await saveLocale(profile.locale === "ru" ? "ru" : "kk");
+  } catch (error) {
+    failure =
+      submittingCredentials &&
+      error instanceof BackendUnavailableError &&
+      [400, 401, 403, 409, 422].includes(error.code ?? 0)
+        ? "auth"
+        : "unavailable";
     if (openedSession) {
       try {
         await openedSession.deleteSession({ sessionId: "current" });
       } catch {}
     }
-    (await cookies()).delete(sessionCookie());
+    if (sessionStored) (await cookies()).delete(sessionCookie());
   }
-  operationLog("auth_attempt", failed ? "failed" : "success", "auth");
-  if (failed) redirect(target + "?error=auth");
+  operationLog("auth_attempt", failure ? "failed" : "success", "auth");
+  if (failure) redirect(errorPath(failure));
   revalidatePath("/", "layout");
-  redirect(signup ? "/onboarding" : "/feed");
+  redirect(signup ? "/onboarding" : resumeDiscover ? "/discover" : "/feed");
 }
 export async function signOut() {
   const { account } = await requireUser();
