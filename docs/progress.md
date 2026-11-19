@@ -369,3 +369,9 @@ Local SDK fixtures are not hosted Appwrite evidence. Hosted schema/permission ve
 - Browser coverage includes both languages, small-screen layout, anonymous access, and fixture-backed signup, session, onboarding, and Discover. See [MVP 4.0 product and verification notes](product/MVP_40_DISCOVER_FIRST.md).
 - Hosted Firewall verification, two-user live acceptance, and Kazakhstan data residency review remain open. No Preview or Production deployment was created.
 - Fresh local checks passed. Lint, typecheck, and production build succeeded. Security 32/32, social 28/28, migration 9/9, operations 12/12, deployment 8/8, and Playwright 72/72 passed. The production build without Appwrite also passed a five-width browser smoke, account unavailability, and protected Discover redirection.
+
+### MVP 4.0 homepage correction
+
+- Restored the city-feed structure on the public root with a compact bilingual header, registration and login links, and real community navigation. Guests see a read-only, labeled selection of existing fictional posts, without event examples, illustrations, or activity counters. The interactive demo stays at `/demo`.
+- The root sends visitors with a verified Appwrite session to the existing `/feed`. The feed, communities, Discover, account forms, onboarding, and security controls remain available through their existing routes.
+- Lint, typecheck and production build passed. Playwright passed 72/72, security 32/32, social 28/28, migration 9/9, operations 12/12 and deployment 8/8. Reviewed production-build screenshots without Appwrite at 320 px, 390 px and 1440 px.

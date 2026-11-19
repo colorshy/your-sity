@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
-test("public discovery keeps fixture data off the landing page", async ({
+test("public homepage shows a labeled demo feed without private fixture data", async ({
   page,
   request,
 }, info) => {
@@ -20,38 +20,46 @@ test("public discovery keeps fixture data off the landing page", async ({
 
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    /Өз қалаң\. Өз адамдарың\..*Өз тарихың\./,
+    "Өз қалаң. Өз адамдарың.",
   );
   await page.getByRole("button", { name: "РУС", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "Твоя история.",
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Твой город. Твои люди.",
   );
-  if (info.project.name === "mobile") {
-    for (const width of [320, 390]) {
-      await page.setViewportSize({ width, height: 844 });
-      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      expect(
-        await page.evaluate(() => document.documentElement.scrollWidth),
-      ).toBe(width);
-    }
-    await page.getByLabel("Меню", { exact: true }).focus();
-    await page.keyboard.press("Enter");
-    await page
-      .getByRole("navigation", { name: "Главное меню" })
-      .getByRole("link", { name: "Сообщества" })
-      .click();
-    await expect(page).toHaveURL(/#communities$/);
-    await page.goto("/");
+  const feed = page.getByRole("region", { name: "Демолента Шымкента" });
+  await expect(
+    feed.getByText("Публикации — вымышленные примеры."),
+  ).toBeVisible();
+  await expect(feed.getByRole("article").first()).toBeVisible();
+  await expect(feed.getByRole("img")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: /как это работает/i }),
+  ).toHaveCount(0);
+  await expect(page.locator('a[href="/demo?page=post&id=walk"]')).toHaveCount(
+    0,
+  );
+  const widths =
+    info.project.name === "mobile" ? [320, 390] : [page.viewportSize()!.width];
+  for (const width of widths) {
+    await page.setViewportSize({
+      width,
+      height:
+        info.project.name === "mobile" ? 844 : page.viewportSize()!.height,
+    });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(
+      page.getByRole("banner").getByRole("link", { name: "Регистрация" }),
+    ).toBeInViewport();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(width);
+    await page.screenshot({
+      path: info.outputPath(`homepage-${width}.png`),
+      animations: "disabled",
+      style: "nextjs-portal { display: none; }",
+    });
   }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
-    await page.evaluate(() => innerWidth),
-  );
-  await page.screenshot({
-    path: info.outputPath("landing.png"),
-    fullPage: true,
-    animations: "disabled",
-  });
   await page.getByRole("button", { name: "ҚАЗ", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "kk");
   await page.reload();
@@ -64,7 +72,7 @@ test("public actions open account forms and the explicitly fictional demo", asyn
   await page.goto("/");
   await page
     .getByRole("banner")
-    .getByRole("link", { name: "Қосылу", exact: true })
+    .getByRole("link", { name: "Тіркелу", exact: true })
     .click();
   await expect(page).toHaveURL(/\/sign-up$/);
   await expect(
@@ -87,12 +95,18 @@ test("public actions open account forms and the explicitly fictional demo", asyn
   await page.goto("/");
   await page
     .getByRole("main")
-    .getByRole("link", { name: "Демоны көру" })
+    .getByRole("link", { name: "Демоны ашу" })
     .click();
   await expect(page).toHaveURL(/\/demo$/);
   await expect(page.locator(".mvp-demo-notice")).toContainText(
     /ойдан|вымышленные/i,
   );
+  await page.goto("/");
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Қауымдастықтар" })
+    .click();
+  await expect(page).toHaveURL(/\/sign-in$/);
 });
 
 test("fixture onboarding leads to Discover and returning login resumes it", async ({
@@ -125,10 +139,13 @@ test("fixture onboarding leads to Discover and returning login resumes it", asyn
     page.getByText("Әзірге ешбір қауымдастыққа қосылмадың.", { exact: false }),
   ).toBeVisible();
   await page.goto("/");
+  await expect(page).toHaveURL(/\/feed$/);
   await expect(
-    page.getByRole("banner").getByRole("link", { name: "Your City-ге өту" }),
-  ).toHaveAttribute("href", "/discover");
-  await expect(page.getByRole("main")).not.toContainText("Discover Resident");
+    page.getByRole("heading", { name: "Қала лентасы" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Жазбалар — ойдан шығарылған үлгілер."),
+  ).toHaveCount(0);
   const session = (await context.cookies()).find((cookie) =>
     cookie.name.includes("your-city-session"),
   );
@@ -147,7 +164,9 @@ test("fixture onboarding leads to Discover and returning login resumes it", asyn
   await context.addCookies([session]);
   await page.goto("/");
   await expect(
-    page.getByRole("banner").getByRole("link", { name: "Қосылу", exact: true }),
+    page
+      .getByRole("banner")
+      .getByRole("link", { name: "Тіркелу", exact: true }),
   ).toBeVisible();
 
   await page.goto("/sign-up");

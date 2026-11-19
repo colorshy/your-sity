@@ -2,7 +2,11 @@
 
 Source repository `colorshy/your-sity`, from `feat/mvp-34-product-experience` at `b8984213c7da65f67691ce01168b2d1666aa739a`. The working branch is `feat/mvp-4-discover-first`.
 
-## Resident journey
+## Homepage correction
+
+The public root now uses the original city-feed structure with a compact welcome, account links, and the real communities link. Guests see labeled, read-only fictional posts drawn from the existing demo. The root checks the server session before sending signed-in visitors to the real feed.
+
+## Original MVP 4.0 delivery
 
 - `/` presents Shymkent, people, communities, and the planned activities direction in Kazakh and Russian. Its catalog themes are illustrative. It works without Appwrite and checks only the current session, when present, before offering the Discover link. The public language switch updates the browser preference without a database write.
 - `/demo` contains the fictional experience and browser-local activity. The real account forms use the existing Appwrite account/session workflow, server validation, generic credential feedback, and existing auth Firewall enforcement.

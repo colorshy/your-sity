@@ -14,6 +14,7 @@ import {
   username,
 } from "@/lib/social-demo";
 import { demoHref, translator, type DemoUI } from "./shared";
+import { DemoPostContent } from "./demo-post-content";
 import { Conversation } from "./conversation";
 import { TrustControls } from "./trust-controls";
 export function SocialPost({
@@ -100,15 +101,15 @@ export function SocialPost({
           <span>{districtName(p.neighborhood, state.lang)}</span>
         )}
       </div>
-      <div className="mvp-post-content">
-        <Link href={demoHref("post", p.id)}>
-          <h2>{title}</h2>
-        </Link>
-        <p>
-          {full || expanded || body.length <= 180
+      <DemoPostContent
+        id={p.id}
+        title={title}
+        body={
+          full || expanded || body.length <= 180
             ? body
-            : body.slice(0, 180) + "…"}
-        </p>
+            : body.slice(0, 180) + "…"
+        }
+      >
         {!full && body.length > 180 && (
           <button
             className="social-expand"
@@ -120,7 +121,7 @@ export function SocialPost({
               : t("Толығырақ", "Показать ещё")}
           </button>
         )}
-      </div>
+      </DemoPostContent>
       {p.quoteId && (
         <div className="social-quote">
           {quote && !isHidden(state, authorId(quote)) ? (
