@@ -1,5 +1,7 @@
 # MVP 5.1 migration and recovery
 
+For the separate full-project bootstrap and branch-specific Preview procedure, see [MVP_52_ISOLATED_RELEASE.md](MVP_52_ISOLATED_RELEASE.md).
+
 The source implements repost rows, private post media and authenticated read/upload routes. Legacy text-only posts have no `post_media` rows and continue rendering. These resources **have not been created in the shared Appwrite project**. The strict runtime schema gate will reject a deployment until the two new tables and bucket are verified in the target project.
 
 ## Resource contract

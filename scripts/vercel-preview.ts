@@ -7,6 +7,7 @@ import {
   deploymentTarget,
   previewArguments,
   verifyPreviewReadback,
+  verifyIsolatedPreviewValues,
   type EnvironmentMetadata,
   type ProjectIdentity,
 } from "../src/lib/operations/deployment-target";
@@ -26,7 +27,10 @@ function status(error: unknown): number | undefined {
   }
   return undefined;
 }
-function metadataEntries(response: unknown): EnvironmentMetadata[] {
+function metadataEntries(
+  response: unknown,
+  includeValues = false,
+): EnvironmentMetadata[] {
   if (!response || typeof response !== "object")
     throw new Error("Unrecognized environment metadata");
   const object = response as Record<string, unknown>;
@@ -45,7 +49,12 @@ function metadataEntries(response: unknown): EnvironmentMetadata[] {
   return entries.map((raw) => {
     if (!raw || typeof raw !== "object" || typeof raw.key !== "string")
       throw new Error("Invalid environment metadata");
-    return { key: raw.key, target: raw.target, gitBranch: raw.gitBranch };
+    return {
+      key: raw.key,
+      target: raw.target,
+      gitBranch: raw.gitBranch,
+      ...(includeValues ? { value: raw.value } : {}),
+    };
   });
 }
 async function main() {
@@ -118,6 +127,14 @@ async function main() {
       );
       return;
     }
+    stage = "isolated-preview-values";
+    const decrypted = await client.projects.filterProjectEnvs({
+      idOrName: deploymentTarget.projectId,
+      teamId: deploymentTarget.teamId,
+      gitBranch: deploymentTarget.branch,
+      decrypt: "true",
+    });
+    verifyIsolatedPreviewValues(metadataEntries(decrypted, true));
     stage = "source-verification";
     if (
       git("branch", "--show-current") !== deploymentTarget.branch ||

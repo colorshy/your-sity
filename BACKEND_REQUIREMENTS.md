@@ -1,5 +1,13 @@
 # Appwrite handoff for the connected ChatGPT backend operator
 
+## MVP 5.2 isolated lab (supersedes the historical photo-unavailable section below)
+
+The application now has server-mediated private image upload and repost rows in source. Hosted behavior remains unverified. Do not change the shared `your-city` project, its Frankfurt data or its existing eleven tables for this isolated lab. Appwrite project environments are unavailable on the current plan (`403 billing_plan_not_allowed`); use a separate project with exact ID `your-city-mvp51-lab`, or a loopback self-hosted instance with that ID. No real users, profiles, posts, email addresses, sessions or rows are copied.
+
+The exact isolated bootstrap is `npm run mvp5:bootstrap` (read-only plan), then `npm run mvp5:bootstrap -- --apply --isolated` after inspecting the plan. It creates `your_city_db`, the eleven base tables, `post_reposts`, `post_media`, eight synthetic catalog rows and `your-city-post-media`. Table grants: `cities` and `communities` have only `read("any")`; every other table has `[]`; all use `rowSecurity=false`, `enabled=true`. The bucket uses `permissions=[]`, `fileSecurity=true`, `enabled=true`, maximum 5 MiB **per file**, extensions jpg/png/webp, antivirus and metadata stripping. Column/index definitions and seed values are pinned in [isolated-bootstrap.ts](src/lib/migrations/isolated-bootstrap.ts). Incompatible metadata or unavailable provider features stop the run; never relax grants or bucket protections. Rerun dry-run to zero operations after provider readiness.
+
+The existing shared project still requires a separate approved backup/restore and additive migration procedure. Runtime Preview credentials for the lab need `sessions.write`, `tables.read`, `rows.read`, `rows.write`, `buckets.read`, `files.read`, `files.write`; migration credentials additionally need database/table/bucket creation and read plus row creation/read. Confirm exact available Appwrite scope names in the connected Console. Vercel Preview binds the isolated runtime key, `APPWRITE_TARGET=isolated` and isolated project ID only to `feat/mvp-5-social-feed`, retains SSO and Firewall, and never changes Production. See [MVP_52_ISOLATED_RELEASE.md](docs/product/MVP_52_ISOLATED_RELEASE.md) for the operational sequence and live acceptance gate.
+
 This document specifies the application's exact contract. Codex has not inspected or modified the live schema. The founder confirms the resources exist. Reuse them; do not recreate the project/database/tables, generate alternate IDs, replace existing rows, or delete data to satisfy this contract. Do not ask the founder to perform routine backend administration.
 
 ## Fixed resources

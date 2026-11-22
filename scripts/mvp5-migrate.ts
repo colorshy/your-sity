@@ -12,6 +12,11 @@ import {
 } from "../src/lib/migrations/mvp5";
 import { mediaBucket, maxImageBytes } from "../src/lib/appwrite/media-limits";
 import type { TableMetadata } from "../src/lib/appwrite/schema";
+import {
+  allowedIsolatedEndpoint,
+  isolatedDatabase,
+  isolatedProject,
+} from "../src/lib/migrations/isolated-bootstrap";
 const snapshot = process.argv.indexOf("--snapshot");
 const apply = process.argv.includes("--apply");
 const project = process.env.APPWRITE_MIGRATION_PROJECT_ID;
@@ -32,9 +37,13 @@ async function main() {
     apply &&
     (!process.argv.includes("--isolated") ||
       !project ||
-      project === "your-city" ||
+      project !== isolatedProject ||
       !key ||
-      !endpoint.startsWith("https://"))
+      databaseId !== isolatedDatabase ||
+      !allowedIsolatedEndpoint(
+        endpoint,
+        process.argv.includes("--self-hosted"),
+      ))
   )
     throw new Error(
       "Apply requires an isolated project, migration key and explicit --isolated flag",

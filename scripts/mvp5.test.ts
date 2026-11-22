@@ -12,6 +12,7 @@ import {
   maxImageBytes,
 } from "../src/lib/appwrite/media";
 import type { TableMetadata } from "../src/lib/appwrite/schema";
+import sharp from "sharp";
 const table = (id: "post_reposts" | "post_media"): TableMetadata => ({
   $id: id,
   enabled: true,
@@ -79,4 +80,22 @@ test("upload limits and actual decoding reject oversized or mislabeled content",
     ),
   );
   await assert.rejects(validateImage(new Uint8Array(20), "image/png"));
+  for (const [format, mime] of [
+    ["jpeg", "image/jpeg"],
+    ["png", "image/png"],
+    ["webp", "image/webp"],
+  ] as const) {
+    const encoded = await sharp({
+      create: {
+        width: 8,
+        height: 8,
+        channels: 3,
+        background: "green",
+      },
+    })
+      .toFormat(format)
+      .toBuffer();
+    assert.equal(await validateImage(encoded, mime), mime);
+    await assert.rejects(validateImage(encoded, "image/gif"));
+  }
 });

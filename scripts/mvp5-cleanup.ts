@@ -1,6 +1,12 @@
 /** Retryable orphan media cleanup. Dry-run by default. */
 import { Client, TablesDB, Storage, Query } from "node-appwrite";
 import { mediaBucket } from "../src/lib/appwrite/media-limits";
+import { cleanupCandidate } from "../src/lib/migrations/media-cleanup";
+import {
+  allowedIsolatedEndpoint,
+  isolatedDatabase,
+  isolatedProject,
+} from "../src/lib/migrations/isolated-bootstrap";
 const project = process.env.APPWRITE_MIGRATION_PROJECT_ID;
 const key = process.env.APPWRITE_MIGRATION_API_KEY;
 const endpoint =
@@ -11,9 +17,12 @@ async function main() {
   if (!project || !key)
     throw new Error("Missing migration metadata credentials");
   if (
-    apply &&
-    (project === "your-city" || !process.argv.includes("--isolated"))
+    project !== isolatedProject ||
+    databaseId !== isolatedDatabase ||
+    !allowedIsolatedEndpoint(endpoint, process.argv.includes("--self-hosted"))
   )
+    throw new Error("Cleanup target is not the allowlisted isolated project");
+  if (apply && !process.argv.includes("--isolated"))
     throw new Error(
       "Shared project cleanup requires a separately approved runbook",
     );
@@ -23,7 +32,7 @@ async function main() {
     .setKey(key);
   const db = new TablesDB(client),
     storage = new Storage(client);
-  const cutoff = Date.now() - 24 * 3600_000;
+  const now = Date.now();
   const candidates: string[] = [];
   let offset = 0;
   while (true) {
@@ -56,8 +65,7 @@ async function main() {
           throw error;
       }
       if (
-        (!post && Date.parse(row.$createdAt) < cutoff) ||
-        (post && ["deleted", "hidden"].includes(post.status ?? ""))
+        cleanupCandidate(post ? (post.status ?? "") : null, row.$createdAt, now)
       )
         candidates.push(row.$id);
     }
@@ -76,7 +84,31 @@ async function main() {
       databaseId,
       tableId: "post_media",
       rowId,
-    })) as unknown as { file_id: string };
+    })) as unknown as { file_id: string; post_id: string; $createdAt: string };
+    let post: { status?: string } | undefined;
+    try {
+      post = (await db.getRow({
+        databaseId,
+        tableId: "posts",
+        rowId: row.post_id,
+      })) as { status?: string };
+    } catch (error) {
+      if (!(
+        typeof error === "object" &&
+        error &&
+        "code" in error &&
+        error.code === 404
+      ))
+        throw error;
+    }
+    if (
+      !cleanupCandidate(
+        post ? (post.status ?? "") : null,
+        row.$createdAt,
+        Date.now(),
+      )
+    )
+      continue;
     try {
       await storage.deleteFile({ bucketId: mediaBucket, fileId: row.file_id });
     } catch (error) {

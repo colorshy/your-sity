@@ -275,3 +275,43 @@ test("runtime Appwrite identity is pinned; only non-production loopback fixtures
     }),
   );
 });
+test("isolated Appwrite credentials require explicit target and protected Preview branch", async () => {
+  const { resolveAppwriteConfig } = await import("../src/lib/appwrite/config");
+  const isolated = {
+    APPWRITE_API_KEY: "synthetic-only",
+    APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
+    APPWRITE_TARGET: "isolated",
+  };
+  assert.equal(
+    resolveAppwriteConfig({ ...isolated, NODE_ENV: "test" })?.project,
+    "your-city-mvp51-lab",
+  );
+  const preview = {
+    ...isolated,
+    NODE_ENV: "production",
+    VERCEL: "1",
+    VERCEL_ENV: "preview",
+    VERCEL_GIT_COMMIT_REF: "feat/mvp-5-social-feed",
+  };
+  assert.equal(resolveAppwriteConfig(preview)?.project, "your-city-mvp51-lab");
+  for (const invalid of [
+    { VERCEL_ENV: "production" },
+    { VERCEL_GIT_COMMIT_REF: "main" },
+    { VERCEL: "0" },
+    { APPWRITE_PROJECT_ID: "your-city" },
+    { APPWRITE_TARGET: "" },
+  ])
+    assert.throws(() => resolveAppwriteConfig({ ...preview, ...invalid }));
+  assert.throws(() =>
+    resolveAppwriteConfig({
+      ...isolated,
+      APPWRITE_PROJECT_ID: "arbitrary-lab",
+      NODE_ENV: "test",
+    }),
+  );
+  assert.ok(
+    deploymentIssues({ ...preview, VERCEL_ENV: "production" }).includes(
+      "appwrite-identity",
+    ),
+  );
+});

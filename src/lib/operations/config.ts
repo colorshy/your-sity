@@ -1,3 +1,7 @@
+import {
+  resolveAppwriteConfig,
+  validAppwriteTarget,
+} from "@/lib/appwrite/config";
 export function canonicalOrigin(
   value: string | undefined,
   production: boolean,
@@ -38,10 +42,17 @@ export function deploymentIssues(
   )
     issues.push("appwrite-endpoint");
   if (
-    (env.APPWRITE_PROJECT_ID || "your-city") !== "your-city" ||
+    !validAppwriteTarget(env) ||
     (env.APPWRITE_DATABASE_ID || "your_city_db") !== "your_city_db"
   )
     issues.push("appwrite-identity");
+  else if (env.APPWRITE_API_KEY) {
+    try {
+      resolveAppwriteConfig(env);
+    } catch {
+      issues.push("appwrite-identity");
+    }
+  }
   try {
     applicationOrigin(env);
   } catch {

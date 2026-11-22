@@ -16,7 +16,35 @@ export type EnvironmentMetadata = {
   key: string;
   target?: string | string[];
   gitBranch?: string | null;
+  value?: string;
 };
+export function verifyIsolatedPreviewValues(envs: EnvironmentMetadata[]) {
+  const expected = {
+    APPWRITE_TARGET: "isolated",
+    APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
+    APPWRITE_DATABASE_ID: "your_city_db",
+    APPWRITE_ENDPOINT: "https://fra.cloud.appwrite.io/v1",
+  };
+  for (const [key, value] of Object.entries(expected)) {
+    const matching = envs.filter(
+      (e) =>
+        e.key === key &&
+        e.gitBranch === deploymentTarget.branch &&
+        (Array.isArray(e.target) ? e.target : [e.target]).join("|") ===
+          "preview",
+    );
+    if (matching.length !== 1 || matching[0].value !== value)
+      throw new Error("Isolated Preview value unverified");
+  }
+  const keys = envs.filter(
+    (e) =>
+      e.key === "APPWRITE_API_KEY" &&
+      e.gitBranch === deploymentTarget.branch &&
+      (Array.isArray(e.target) ? e.target : [e.target]).join("|") === "preview",
+  );
+  if (keys.length !== 1 || !keys[0].value)
+    throw new Error("Isolated Preview key unverified");
+}
 /** Project metadata from Vercel, never inferred from a login page or caller headers. */
 export function previewProtectionEnabled(project: ProjectIdentity) {
   return (
@@ -65,6 +93,7 @@ export function auditDeploymentTarget(
   ].sort();
   for (const key of [
     "APPWRITE_API_KEY",
+    "APPWRITE_TARGET",
     "APPWRITE_ENDPOINT",
     "APPWRITE_PROJECT_ID",
     "APPWRITE_DATABASE_ID",
@@ -73,6 +102,21 @@ export function auditDeploymentTarget(
     "VERCEL_WRITE_RATE_LIMIT_ID",
   ])
     if (!previewKeys.includes(key)) issues.push("preview-env-missing:" + key);
+  for (const key of [
+    "APPWRITE_API_KEY",
+    "APPWRITE_TARGET",
+    "APPWRITE_PROJECT_ID",
+  ])
+    if (
+      !envs.some(
+        (e) =>
+          e.key === key &&
+          e.gitBranch === deploymentTarget.branch &&
+          (Array.isArray(e.target) ? e.target : [e.target]).length === 1 &&
+          (Array.isArray(e.target) ? e.target : [e.target])[0] === "preview",
+      )
+    )
+      issues.push("branch-env-missing:" + key);
   for (const key of [
     "NEXT_PUBLIC_APPWRITE_API_KEY",
     "NEXT_PUBLIC_VERCEL_TOKEN",

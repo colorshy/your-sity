@@ -6,6 +6,7 @@ import {
   previewArguments,
   verifyPreviewReadback,
   previewProtectionEnabled,
+  verifyIsolatedPreviewValues,
 } from "../src/lib/operations/deployment-target";
 const project = {
   id: deploymentTarget.projectId,
@@ -16,6 +17,7 @@ const project = {
 };
 const keys = [
   "APPWRITE_API_KEY",
+  "APPWRITE_TARGET",
   "APPWRITE_ENDPOINT",
   "APPWRITE_PROJECT_ID",
   "APPWRITE_DATABASE_ID",
@@ -26,6 +28,7 @@ const keys = [
 const metadata = keys.map((key) => ({
   key,
   target: ["preview"],
+  gitBranch: deploymentTarget.branch,
   value: "must-not-appear",
 }));
 test("deployment reuses the exact existing project and correct GitHub repository", () => {
@@ -47,14 +50,14 @@ test("production-only or other-branch variables do not count as preview configur
       project,
       metadata.map((e) => ({ ...e, target: ["production"] })),
     ).issues.length,
-    7,
+    11,
   );
   assert.equal(
     auditDeploymentTarget(
       project,
       metadata.map((e) => ({ ...e, gitBranch: "other" })),
     ).issues.length,
-    7,
+    11,
   );
   assert.equal(
     auditDeploymentTarget(
@@ -63,6 +66,45 @@ test("production-only or other-branch variables do not count as preview configur
     ).issues.length,
     0,
   );
+});
+test("shared Preview credentials never count as isolated branch credentials", () => {
+  const shared = metadata.map((e) => ({ ...e, gitBranch: undefined }));
+  const report = auditDeploymentTarget(project, shared);
+  assert.ok(report.issues.includes("branch-env-missing:APPWRITE_API_KEY"));
+  assert.ok(report.issues.includes("branch-env-missing:APPWRITE_PROJECT_ID"));
+  assert.ok(report.issues.includes("branch-env-missing:APPWRITE_TARGET"));
+});
+test("isolated branch credentials cannot share a Production target", () => {
+  const report = auditDeploymentTarget(
+    project,
+    metadata.map((e) =>
+      e.key === "APPWRITE_API_KEY"
+        ? { ...e, target: ["preview", "production"] }
+        : e,
+    ),
+  );
+  assert.ok(report.issues.includes("branch-env-missing:APPWRITE_API_KEY"));
+});
+test("deployment requires decrypted isolated identity without exposing the key", () => {
+  const values: Record<string, string> = {
+    APPWRITE_TARGET: "isolated",
+    APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
+    APPWRITE_DATABASE_ID: "your_city_db",
+    APPWRITE_ENDPOINT: "https://fra.cloud.appwrite.io/v1",
+    APPWRITE_API_KEY: "synthetic-only",
+  };
+  const envs = metadata.map((e) => ({ ...e, value: values[e.key] }));
+  assert.doesNotThrow(() => verifyIsolatedPreviewValues(envs));
+  for (const key of Object.keys(values))
+    assert.throws(() =>
+      verifyIsolatedPreviewValues(
+        envs.map((e) =>
+          e.key === key
+            ? { ...e, value: key === "APPWRITE_API_KEY" ? "" : "wrong" }
+            : e,
+        ),
+      ),
+    );
 });
 test("remote server secrets are not required locally and are never included in audit output", () => {
   const report = auditDeploymentTarget(project, metadata);

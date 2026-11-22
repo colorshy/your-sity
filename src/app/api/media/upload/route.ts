@@ -77,6 +77,20 @@ export async function POST(request: Request) {
   const cfg = appwriteConfig();
   if (!cfg) return new Response(null, { status: 503 });
   const storage = new Storage(apiClient());
+  const discardPending = async () => {
+    try {
+      await storage.deleteFile({ bucketId: mediaBucket, fileId });
+    } catch (error) {
+      if (!(
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === 404
+      ))
+        throw error;
+    }
+    await repo.delete("post_media", fileId);
+  };
   let stage = "storage-request";
   try {
     const body = new FormData();
@@ -120,8 +134,7 @@ export async function POST(request: Request) {
         stage = "image-validation";
         await validateImage(full, mime);
       } catch {
-        await storage.deleteFile({ bucketId: mediaBucket, fileId });
-        await repo.delete("post_media", fileId);
+        await discardPending();
         return new Response(null, { status: 415 });
       }
       await repo.update("post_media", fileId, { ready: true });
@@ -135,7 +148,7 @@ export async function POST(request: Request) {
       console.error("Media upload failed at", stage);
     if (start === 0) {
       try {
-        await repo.delete("post_media", fileId);
+        await discardPending();
       } catch {}
     }
     return new Response(null, { status: 503 });

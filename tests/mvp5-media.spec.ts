@@ -34,17 +34,52 @@ test("private image upload and repost persist in local Appwrite fixture", async 
         .png()
         .toBuffer();
   if (large) expect(bytes.length).toBeGreaterThan(4 * 1024 * 1024);
-  await page.locator('input[type="file"]').setInputFiles({
-    name: large ? "shymkent.jpg" : "shymkent.png",
-    mimeType: large ? "image/jpeg" : "image/png",
-    buffer: bytes,
-  });
-  await expect(page.locator(".app-upload-previews img")).toHaveCount(1);
+  const files = [
+    {
+      name: large ? "shymkent.jpg" : "shymkent.png",
+      mimeType: large ? "image/jpeg" : "image/png",
+      buffer: bytes,
+    },
+  ];
+  if (large) {
+    const png = await sharp({
+      create: {
+        width: 8,
+        height: 8,
+        channels: 3,
+        background: "green",
+      },
+    })
+      .png()
+      .toBuffer();
+    const webp = await sharp({
+      create: {
+        width: 8,
+        height: 8,
+        channels: 3,
+        background: "blue",
+      },
+    })
+      .webp()
+      .toBuffer();
+    files.push(
+      { name: "extra.png", mimeType: "image/png", buffer: png },
+      { name: "extra.webp", mimeType: "image/webp", buffer: webp },
+      { name: "extra-two.webp", mimeType: "image/webp", buffer: webp },
+    );
+  }
+  await page.locator('input[type="file"]').setInputFiles(files);
+  await expect(page.locator(".app-upload-previews img")).toHaveCount(
+    files.length,
+  );
   await page.getByRole("button", { name: "Опубликовать" }).click();
   await expect(page).toHaveURL(/\/posts\//);
   const postUrl = page.url();
-  await expect(page.locator(".app-media-grid img")).toBeVisible();
-  const imageUrl = await page.locator(".app-media-grid a").getAttribute("href");
+  await expect(page.locator(".app-media-grid img")).toHaveCount(files.length);
+  const imageUrls = await page
+    .locator(".app-media-grid a")
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
+  const imageUrl = await page.locator(".app-media-grid a").first().getAttribute("href");
   expect(imageUrl).toMatch(/^\/api\/media\/[a-z0-9]+$/);
   const response = await page.request.get(imageUrl!);
   expect(response.status()).toBe(200);
@@ -95,4 +130,6 @@ test("private image upload and repost persist in local Appwrite fixture", async 
   await page.getByRole("button", { name: "Удалить публикацию" }).click();
   await expect(page).toHaveURL(/\/feed$/);
   expect((await page.request.get(imageUrl!)).status()).toBe(404);
+  for (const url of imageUrls)
+    expect((await page.request.get(url)).status()).toBe(404);
 });

@@ -1,4 +1,22 @@
+export const isolatedProjectId = "your-city-mvp51-lab";
+export const previewBranch = "feat/mvp-5-social-feed";
+export function validAppwriteTarget(env: Record<string, string | undefined>) {
+  const project = env.APPWRITE_PROJECT_ID || "your-city";
+  const isolated = project === isolatedProjectId;
+  if (project !== "your-city" && !isolated) return false;
+  if ((env.APPWRITE_TARGET === "isolated") !== isolated) return false;
+  if (env.APPWRITE_TARGET && env.APPWRITE_TARGET !== "isolated") return false;
+  if (isolated && env.NODE_ENV === "production")
+    return (
+      env.VERCEL === "1" &&
+      env.VERCEL_ENV === "preview" &&
+      env.VERCEL_GIT_COMMIT_REF === previewBranch
+    );
+  if (isolated && env.VERCEL_ENV === "production") return false;
+  return true;
+}
 export function resolveAppwriteConfig(env: Record<string, string | undefined>) {
+  if (!validAppwriteTarget(env)) throw new Error("Invalid Appwrite target");
   const key = env.APPWRITE_API_KEY;
   if (!key) return null;
   const endpoint = env.APPWRITE_ENDPOINT || "https://fra.cloud.appwrite.io/v1";
@@ -15,7 +33,6 @@ export function resolveAppwriteConfig(env: Record<string, string | undefined>) {
     !url.search &&
     !url.hash;
   if (
-    project !== "your-city" ||
     database !== "your_city_db" ||
     (endpoint !== "https://fra.cloud.appwrite.io/v1" && !fixture)
   )

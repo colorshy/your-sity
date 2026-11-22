@@ -27,7 +27,9 @@
     "migration:plan": "tsx scripts/migration-plan.ts",
     "test:migration": "tsx --test scripts/migration.test.ts scripts/mvp5.test.ts",
     "mvp5:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/mvp5-migrate.ts",
-    "mvp5:cleanup": "node --env-file-if-exists=.env.local --import tsx scripts/mvp5-cleanup.ts"
+    "mvp5:cleanup": "node --env-file-if-exists=.env.local --import tsx scripts/mvp5-cleanup.ts",
+    "mvp5:bootstrap": "node --env-file-if-exists=.env.local --import tsx scripts/isolated-bootstrap.ts",
+    "test:bootstrap": "tsx --test scripts/isolated-bootstrap.test.ts scripts/media-cleanup.test.ts"
   },
   "dependencies": {
     "@vercel/firewall": "^1.2.6",
