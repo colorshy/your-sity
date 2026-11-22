@@ -2,7 +2,7 @@ export const deploymentTarget = {
   projectId: "prj_I9ANo3tGUECTuC53MeDAmURntFIh",
   projectName: "your-city",
   repository: "colorshy/your-sity",
-  branch: "feat/mvp-34-product-experience",
+  branch: "feat/mvp-5-social-feed",
   teamId: "team_jmYWtlOQ0orAIYZeWc3LUOrR",
 } as const;
 export type ProjectIdentity = {

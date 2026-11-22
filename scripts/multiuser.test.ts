@@ -56,17 +56,46 @@ test("feed interaction counts are real and viewer state survives service reconst
   assert.deepEqual((await fresh.postInteractionsBatch([post]))[post.id], {
     likes: 1,
     comments: 1,
+    reposts: 0,
+    reposterIds: [],
     liked: true,
     bookmarked: true,
+    reposted: false,
   });
   await bob.interact(post.id, "like", false);
   await bob.interact(post.id, "bookmark", false);
   assert.deepEqual((await fresh.postInteractionsBatch([post]))[post.id], {
     likes: 0,
     comments: 1,
+    reposts: 0,
+    reposterIds: [],
     liked: false,
     bookmarked: false,
+    reposted: false,
   });
+});
+test("reposts are idempotent, attributed and hidden with their source", async () => {
+  const { repo, alice, bob } = await setup();
+  await bob.membership("events", true);
+  const post = await alice.createPost("events", "Source");
+  await bob.repost(post.id, true);
+  await bob.repost(post.id, true);
+  assert.equal((await repo.list("post_reposts")).length, 1);
+  assert.equal((await alice.postInteractionsBatch([post]))[post.id].reposts, 1);
+  assert.ok(
+    (await alice.posts("city")).some(
+      (p) => p.id === post.id && "reposted_by" in p && p.reposted_by === "bob",
+    ),
+  );
+  await bob.repost(post.id, false);
+  assert.equal((await repo.list("post_reposts")).length, 0);
+  await bob.repost(post.id, true);
+  await alice.deletePost(post.id);
+  assert.equal(
+    (await alice.posts("city")).some((p) => p.id === post.id),
+    false,
+  );
+  await assert.rejects(bob.repost(post.id, true));
 });
 test("threaded replies validate post/parent/ownership and notify real recipients", async () => {
   const { alice, bob, repo } = await setup();

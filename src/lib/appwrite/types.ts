@@ -36,6 +36,15 @@ export type Report = Base & {
   status: string;
 };
 export type PostInteraction = Base & { user_id: string; post_id: string };
+export type PostMedia = Base & {
+  post_id: string;
+  file_id: string;
+  owner_id: string;
+  position: number;
+  mime: string;
+  bytes: number;
+  ready: boolean;
+};
 export type Connection = Base & {
   user_id: string;
   target_id: string;
@@ -51,6 +60,8 @@ export type Notification = Base & {
 };
 export type Rows = {
   post_likes: PostInteraction;
+  post_reposts: PostInteraction;
+  post_media: PostMedia;
   bookmarks: PostInteraction;
   connections: Connection;
   notifications: Notification;

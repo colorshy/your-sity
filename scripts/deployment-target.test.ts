@@ -147,8 +147,8 @@ test("beta writes require verified exact Preview URL, branch, project, SHA and n
     assert.throws(() => verifyBetaPreview(base, origin, sha));
 });
 
-test("release target is MVP 3.4 and refuses another team or unverified Preview protection", () => {
-  assert.equal(deploymentTarget.branch, "feat/mvp-34-product-experience");
+test("release target is MVP 5 and refuses another team or unverified Preview protection", () => {
+  assert.equal(deploymentTarget.branch, "feat/mvp-5-social-feed");
   assert.throws(() =>
     auditDeploymentTarget({ ...project, accountId: "team_other" }, metadata),
   );

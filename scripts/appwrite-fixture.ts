@@ -30,6 +30,7 @@ const legacyColumns = new Map(
 const database = "your_city_db",
   now = () => new Date().toISOString();
 const rows = new Map<string, Raw>();
+const mediaFiles = new Map<string, Buffer>();
 const users = new Map<
   string,
   { $id: string; name: string; email: string; emailVerification: boolean }
@@ -110,7 +111,11 @@ function metadata(table: string): TableMetadata {
     columns: [
       ...Object.keys(fields[table as keyof typeof fields]).map((key) => ({
         key,
-        type: ["onboarded", "is_read"].includes(key) ? "boolean" : "string",
+        type: ["onboarded", "is_read", "ready"].includes(key)
+          ? "boolean"
+          : ["position", "bytes"].includes(key)
+            ? "integer"
+            : "string",
         status: "available",
         required:
           !(table === "profiles" && key === "social_version") &&
@@ -123,22 +128,118 @@ function metadata(table: string): TableMetadata {
       })),
       ...(legacyColumns.get(table) ?? []),
     ],
-    indexes: uniqueFields[table as keyof typeof fields]
-      ? [
-          {
-            key: "unique_pair",
-            type: "unique",
-            columns: uniqueFields[table as keyof typeof fields]!,
-            status: "available",
-          },
-        ]
-      : [],
+    indexes: [
+      ...(uniqueFields[table as keyof typeof fields]
+        ? [
+            {
+              key: "unique_pair",
+              type: "unique",
+              columns: uniqueFields[table as keyof typeof fields]!,
+              status: "available",
+            },
+          ]
+        : []),
+      ...(table === "post_reposts"
+        ? [["user_id"], ["post_id"]]
+        : table === "post_media"
+          ? [["post_id"], ["post_id", "position"]]
+          : []
+      ).map((columns, i) => ({
+        key: `required_${i}`,
+        type: "key",
+        columns,
+        status: "available",
+      })),
+    ],
   };
 }
 createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://127.0.0.1:54321");
-  let raw = "";
-  for await (const c of req) raw += c;
+  const rawBytes = Buffer.concat((await Array.fromAsync(req)) as Buffer[]);
+  const raw = rawBytes.toString();
+  if (
+    url.pathname === "/v1/storage/buckets/your-city-post-media" &&
+    req.method === "GET"
+  ) {
+    if (req.headers["x-appwrite-key"] !== "test-server-key") {
+      res.writeHead(401);
+      res.end();
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        $id: "your-city-post-media",
+        enabled: true,
+        fileSecurity: true,
+        $permissions: [],
+        maximumFileSize: 5 * 1024 * 1024,
+        allowedFileExtensions: ["jpg", "png", "webp"],
+        antivirus: true,
+        stripMetadata: true,
+      }),
+    );
+    return;
+  }
+  const mediaPath = url.pathname.match(
+    /^\/v1\/storage\/buckets\/your-city-post-media\/files(?:\/([a-zA-Z0-9._-]+)(?:\/(view))?)?$/,
+  );
+  if (mediaPath) {
+    if (req.headers["x-appwrite-key"] !== "test-server-key") {
+      res.writeHead(401);
+      res.end();
+      return;
+    }
+    const fileId = mediaPath[1];
+    if (req.method === "POST") {
+      const form = await new Request(url, {
+        method: "POST",
+        headers: req.headers as HeadersInit,
+        body: rawBytes,
+      }).formData();
+      const id = String(form.get("fileId"));
+      const file = form.get("file");
+      if (!(file instanceof File)) {
+        res.writeHead(400);
+        res.end();
+        return;
+      }
+      const chunk = Buffer.from(await file.arrayBuffer());
+      const current = mediaFiles.get(id) ?? Buffer.alloc(0);
+      mediaFiles.set(id, Buffer.concat([current, chunk]));
+      const total = Number(
+        String(req.headers["content-range"] ?? "").split("/")[1],
+      );
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          $id: id,
+          chunksUploaded: mediaFiles.get(id)!.length >= total ? 2 : 1,
+          chunksTotal: mediaFiles.get(id)!.length >= total ? 2 : 2,
+        }),
+      );
+      return;
+    }
+    if (
+      req.method === "GET" &&
+      mediaPath[2] === "view" &&
+      fileId &&
+      mediaFiles.has(fileId)
+    ) {
+      res.writeHead(200, { "content-type": "application/octet-stream" });
+      res.end(mediaFiles.get(fileId));
+      return;
+    }
+    if (req.method === "DELETE" && fileId) {
+      mediaFiles.delete(fileId);
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+    return;
+  }
   let body: Record<string, unknown> = {};
   try {
     body = JSON.parse(raw || "{}");

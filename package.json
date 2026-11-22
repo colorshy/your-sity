@@ -25,7 +25,9 @@
     "test:multiuser": "tsx --test scripts/multiuser.test.ts",
     "test:live": "node --env-file-if-exists=.env.local --import tsx scripts/live-two-user.ts",
     "migration:plan": "tsx scripts/migration-plan.ts",
-    "test:migration": "tsx --test scripts/migration.test.ts"
+    "test:migration": "tsx --test scripts/migration.test.ts scripts/mvp5.test.ts",
+    "mvp5:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/mvp5-migrate.ts",
+    "mvp5:cleanup": "node --env-file-if-exists=.env.local --import tsx scripts/mvp5-cleanup.ts"
   },
   "dependencies": {
     "@vercel/firewall": "^1.2.6",
@@ -34,6 +36,7 @@
     "node-appwrite": "^31.2.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "sharp": "^0.35.5",
     "undici": "^8.12.4"
   },
   "devDependencies": {

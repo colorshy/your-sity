@@ -1,5 +1,7 @@
 # MVP 5 implementation and migration gate
 
+MVP 5.1 continues this record. The repost/media plan below is superseded by the implementation and current migration gate in [MVP 5.1 migration and recovery](MVP_51_MEDIA_REPOSTS.md). It describes the state at the previous commit.
+
 This branch implements the authenticated navigation shell and live card actions over the existing eleven-table model. The layout uses real membership and community rows. The feed reads likes, published comments and the viewer's bookmarks in bounded batches, then applies existing hidden-author filtering. Like and bookmark writes still go through the authenticated `postInteraction` server action. Share builds the post URL from the current origin. No new Appwrite or Vercel resource was created.
 
 ## Additive model required for the remaining features

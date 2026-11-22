@@ -1,4 +1,7 @@
-import { getRepository } from "@/lib/appwrite/server";
+import { getRepository, apiClient } from "@/lib/appwrite/server";
+import { Storage } from "node-appwrite";
+import { mediaBucket } from "@/lib/appwrite/media-limits";
+import { verifyMvp5Bucket, type BucketMetadata } from "@/lib/migrations/mvp5";
 import { deploymentIssues } from "@/lib/operations/config";
 import { verifyBackend } from "@/lib/operations/readiness";
 import { operationLog } from "@/lib/operations/log";
@@ -8,6 +11,11 @@ async function ready() {
   if (deploymentIssues(process.env).length) return false;
   try {
     await verifyBackend(await getRepository());
+    verifyMvp5Bucket(
+      (await new Storage(apiClient()).getBucket({
+        bucketId: mediaBucket,
+      })) as unknown as BucketMetadata,
+    );
     return true;
   } catch {
     return false;

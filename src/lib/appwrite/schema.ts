@@ -57,11 +57,23 @@ export const fields: Record<Table, Record<string, string[]>> = {
     reason: ["reason"],
     status: ["status"],
   },
+  post_reposts: { user_id: ["user_id"], post_id: ["post_id"] },
+  post_media: {
+    post_id: ["post_id"],
+    file_id: ["file_id"],
+    owner_id: ["owner_id"],
+    position: ["position"],
+    mime: ["mime"],
+    bytes: ["bytes"],
+    ready: ["ready"],
+  },
 };
 export const uniqueFields: Partial<Record<Table, string[]>> = {
   profiles: ["user_id"],
   community_memberships: ["user_id", "community_id"],
   post_likes: ["user_id", "post_id"],
+  post_reposts: ["user_id", "post_id"],
+  post_media: ["file_id"],
   bookmarks: ["user_id", "post_id"],
   connections: ["user_id", "target_id", "kind"],
 };
@@ -159,16 +171,18 @@ export function inspectSchema(
       !c ||
       c.status !== "available" ||
       c.array ||
-      (["onboarded", "is_read"].includes(field)
+      (["onboarded", "is_read", "ready"].includes(field)
         ? c.type !== "boolean"
-        : ![
-            "string",
-            "varchar",
-            "text",
-            "mediumtext",
-            "longtext",
-            ...(["status", "locale"].includes(field) ? ["enum"] : []),
-          ].includes(c.type))
+        : ["position", "bytes"].includes(field)
+          ? c.type !== "integer"
+          : ![
+              "string",
+              "varchar",
+              "text",
+              "mediumtext",
+              "longtext",
+              ...(["status", "locale"].includes(field) ? ["enum"] : []),
+            ].includes(c.type))
     )
       throw new Error("Incompatible column: " + table + "." + field);
     if (
@@ -186,9 +200,14 @@ export function inspectSchema(
           field,
       );
     if (
-      ["post_likes", "bookmarks", "connections", "notifications"].includes(
-        table,
-      ) &&
+      [
+        "post_likes",
+        "post_reposts",
+        "post_media",
+        "bookmarks",
+        "connections",
+        "notifications",
+      ].includes(table) &&
       !(
         table === "notifications" && ["post_id", "comment_id"].includes(field)
       ) &&
@@ -245,5 +264,25 @@ export function inspectSchema(
     )
   )
     throw new Error("Required unique index missing: " + table);
+  if (table === "post_reposts" || table === "post_media") {
+    const required =
+      table === "post_reposts"
+        ? [["user_id"], ["post_id"]]
+        : [["post_id"], ["post_id", "position"]];
+    for (const columns of required) {
+      if (
+        !metadata.indexes?.some(
+          (i) =>
+            i.status === "available" &&
+            (i.type === "key" || i.type === "unique") &&
+            i.columns.length === columns.length &&
+            columns.every((f, n) => i.columns[n] === keys[f]),
+        )
+      )
+        throw new Error(
+          "Required index missing: " + table + "." + columns.join("_"),
+        );
+    }
+  }
   return { keys, columns: metadata.columns };
 }

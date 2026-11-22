@@ -232,7 +232,11 @@ export async function savePost(form: FormData) {
     const current = value(form, "post");
     const post = current
       ? await service.editPost(current, value(form, "body"))
-      : await service.createPost(value(form, "community"), value(form, "body"));
+      : await service.createPost(
+          value(form, "community"),
+          value(form, "body"),
+          value(form, "draft") || undefined,
+        );
     id = post.id;
   } catch {
     redirect("/create?error=save");
@@ -316,8 +320,11 @@ export async function postInteraction(form: FormData) {
   if (!validId(pid)) redirect("/feed");
   try {
     const kind = value(form, "kind");
-    if (kind !== "like" && kind !== "bookmark") throw new Error();
-    await service.interact(pid, kind, value(form, "enabled") === "true");
+    if (kind === "repost")
+      await service.repost(pid, value(form, "enabled") === "true");
+    else if (kind === "like" || kind === "bookmark")
+      await service.interact(pid, kind, value(form, "enabled") === "true");
+    else throw new Error();
   } catch {
     redirect("/posts/" + pid + "?error=save");
   }

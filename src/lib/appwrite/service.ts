@@ -300,6 +300,24 @@ export class CityService {
         now,
       );
     }
+    if (eligible.length) {
+      const reposts = await this.allRows("post_reposts", [], true);
+      const byId = new Map(eligible.map((p) => [p.id, p]));
+      const entries = reposts
+        .filter((r) => !hidden.has(r.user_id) && byId.has(r.post_id))
+        .map((r) => ({
+          ...byId.get(r.post_id)!,
+          reposted_by: r.user_id,
+          reposted_at: r.created_at,
+          created_at: r.created_at,
+        }));
+      eligible =
+        mode === "for-you"
+          ? [...entries, ...eligible]
+          : [...eligible, ...entries].sort((a, b) =>
+              b.created_at.localeCompare(a.created_at),
+            );
+    }
     const offset = (Math.max(1, Math.min(page, 1000)) - 1) * 20;
     return eligible.slice(offset, offset + 21);
   }
@@ -337,18 +355,52 @@ export class CityService {
     const offset = (Math.max(1, Math.min(page, 1000)) - 1) * 20;
     return visible.slice(offset, offset + 21);
   }
-  async createPost(cid: string, body: string) {
-    body = text(body, 1, 5000);
+  async createPost(cid: string, body: string, draftId?: string) {
+    if (draftId && !validId(draftId)) throw new AccessError();
+    const media = draftId
+      ? await this.repo.list(
+          "post_media",
+          [{ field: "post_id", value: draftId }],
+          { limit: 5 },
+        )
+      : [];
+    if (
+      media.length > 4 ||
+      media.some((m) => m.owner_id !== this.actor.id || !m.ready)
+    )
+      throw new AccessError();
+    body = text(body, media.length ? 0 : 1, 5000);
     return this.repo.transaction(async (repo) => {
       const svc = new CityService(repo, this.actor);
       await svc.joined(cid);
-      return repo.create("posts", id(), {
+      return repo.create("posts", draftId || id(), {
         author_id: this.actor.id,
         community_id: cid,
         body,
         status: "published",
       });
     });
+  }
+  async mediaForPosts(posts: Pick<Post, "id">[]) {
+    const ids = [...new Set(posts.map((p) => p.id))];
+    if (!ids.length) return [];
+    return (
+      await this.allRows("post_media", [{ field: "post_id", value: ids }])
+    )
+      .filter((m) => m.ready)
+      .sort((a, b) => a.position - b.position);
+  }
+  async mediaForFile(fileId: string) {
+    if (!validId(fileId)) throw new AccessError();
+    const rows = await this.repo.list(
+      "post_media",
+      [{ field: "file_id", value: fileId }],
+      { limit: 2 },
+    );
+    if (rows.length !== 1 || !rows[0].ready) throw new AccessError();
+    const post = await this.post(rows[0].post_id);
+    if (post.status !== "published") throw new AccessError();
+    return rows[0];
   }
   async editPost(pid: string, body: string) {
     body = text(body, 1, 5000);
@@ -593,20 +645,53 @@ export class CityService {
       )),
     };
   }
+  async repost(pid: string, enabled: boolean) {
+    if (!validId(pid)) throw new AccessError();
+    await this.repo.transaction(async (repo) => {
+      const svc = new CityService(repo, this.actor, this.moderators);
+      await svc.resident();
+      const rid = membershipId(this.actor.id, pid);
+      const existing = await repo.get("post_reposts", rid);
+      if (enabled) {
+        const post = await svc.post(pid);
+        if (post.status !== "published") throw new AccessError();
+        await svc.joined(post.community_id);
+        await svc.fenceParticipants([post.author_id]);
+      }
+      if (enabled && !existing)
+        await repo.create("post_reposts", rid, {
+          user_id: this.actor.id,
+          post_id: pid,
+        });
+      if (!enabled && existing) {
+        owner(this.actor.id, existing.user_id);
+        await repo.delete("post_reposts", rid);
+      }
+    });
+  }
   async postInteractionsBatch(posts: Pick<Post, "id">[]) {
     const ids = [...new Set(posts.map((p) => p.id))];
     if (!ids.length)
       return {} as Record<
         string,
-        { likes: number; comments: number; liked: boolean; bookmarked: boolean }
+        {
+          likes: number;
+          comments: number;
+          reposts: number;
+          reposterIds: string[];
+          liked: boolean;
+          bookmarked: boolean;
+          reposted: boolean;
+        }
       >;
-    const [likes, comments, bookmarks, hidden] = await Promise.all([
+    const [likes, comments, bookmarks, reposts, hidden] = await Promise.all([
       this.allRows("post_likes", [{ field: "post_id", value: ids }]),
       this.allRows("comments", [
         { field: "post_id", value: ids },
         { field: "status", value: "published" },
       ]),
       this.allRows("bookmarks", [{ field: "user_id", value: this.actor.id }]),
+      this.allRows("post_reposts", [{ field: "post_id", value: ids }]),
       this.hiddenAuthors(),
     ]);
     return Object.fromEntries(
@@ -616,6 +701,12 @@ export class CityService {
           likes: likes.filter(
             (l) => l.post_id === pid && !hidden.has(l.user_id),
           ).length,
+          reposts: reposts.filter(
+            (r) => r.post_id === pid && !hidden.has(r.user_id),
+          ).length,
+          reposterIds: reposts
+            .filter((r) => r.post_id === pid && !hidden.has(r.user_id))
+            .map((r) => r.user_id),
           comments: comments.filter(
             (c) => c.post_id === pid && !hidden.has(c.author_id),
           ).length,
@@ -623,6 +714,9 @@ export class CityService {
             (l) => l.post_id === pid && l.user_id === this.actor.id,
           ),
           bookmarked: bookmarks.some((b) => b.post_id === pid),
+          reposted: reposts.some(
+            (r) => r.post_id === pid && r.user_id === this.actor.id,
+          ),
         },
       ]),
     );
@@ -737,19 +831,9 @@ export class CityService {
     });
   }
   async authors(posts: Pick<Post, "author_id">[]) {
-    const out = [];
-    for (const uid of [...new Set(posts.map((p) => p.author_id))]) {
-      const byId = await this.repo.get("profiles", uid);
-      const p =
-        byId ??
-        (
-          await this.repo.list("profiles", [{ field: "user_id", value: uid }], {
-            limit: 1,
-          })
-        )[0];
-      if (p && p.user_id === uid)
-        out.push({ id: uid, display_name: p.display_name });
-    }
-    return out;
+    const ids = [...new Set(posts.map(p => p.author_id))];
+    if (!ids.length) return [];
+    const profiles = await this.repo.list("profiles", [{ field: "user_id", value: ids }], { limit: 100 });
+    return profiles.filter(p => ids.includes(p.user_id)).map(p => ({ id: p.user_id, display_name: p.display_name }));
   }
 }

@@ -3617,3 +3617,89 @@ body > .topbar :focus-visible {
   border-bottom-color: #28734b;
   font-weight: 700;
 }
+.app-repost-attribution {
+  margin: 0 0 7px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: #53715d;
+  font-size: 12px;
+}
+.app-media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  overflow: hidden;
+  border-radius: 13px;
+  margin: 12px 0;
+}
+.app-media-grid a:only-child {
+  grid-column: 1 / -1;
+}
+.app-media-grid img {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: #edf2ed;
+}
+.app-media-grid a:only-child img {
+  height: auto;
+  max-height: 440px;
+  object-fit: contain;
+}
+.app-upload-previews {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.app-upload-previews > div {
+  min-width: 0;
+}
+.app-upload-previews img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.app-upload-previews button {
+  display: block;
+  font-size: 12px;
+}
+.app-attach {
+  display: grid;
+  gap: 7px;
+}
+.app-attach input {
+  min-width: 0;
+  max-width: 100%;
+}
+.post-composer progress {
+  width: 100%;
+  accent-color: #28734b;
+}
+@media (max-width: 640px) {
+  .app-media-grid img {
+    height: 145px;
+  }
+  .app-post-actions {
+    gap: 2px;
+  }
+  .app-post-actions a,
+  .app-post-actions button {
+    gap: 3px;
+    padding: 4px;
+    font-size: 11px;
+  }
+  .app-post-actions svg {
+    width: 16px;
+  }
+  .app-upload-previews {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .app-post-actions > button:last-child span {
+    display: none;
+  }
+}
