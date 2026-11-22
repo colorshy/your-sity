@@ -593,6 +593,40 @@ export class CityService {
       )),
     };
   }
+  async postInteractionsBatch(posts: Pick<Post, "id">[]) {
+    const ids = [...new Set(posts.map((p) => p.id))];
+    if (!ids.length)
+      return {} as Record<
+        string,
+        { likes: number; comments: number; liked: boolean; bookmarked: boolean }
+      >;
+    const [likes, comments, bookmarks, hidden] = await Promise.all([
+      this.allRows("post_likes", [{ field: "post_id", value: ids }]),
+      this.allRows("comments", [
+        { field: "post_id", value: ids },
+        { field: "status", value: "published" },
+      ]),
+      this.allRows("bookmarks", [{ field: "user_id", value: this.actor.id }]),
+      this.hiddenAuthors(),
+    ]);
+    return Object.fromEntries(
+      ids.map((pid) => [
+        pid,
+        {
+          likes: likes.filter(
+            (l) => l.post_id === pid && !hidden.has(l.user_id),
+          ).length,
+          comments: comments.filter(
+            (c) => c.post_id === pid && !hidden.has(c.author_id),
+          ).length,
+          liked: likes.some(
+            (l) => l.post_id === pid && l.user_id === this.actor.id,
+          ),
+          bookmarked: bookmarks.some((b) => b.post_id === pid),
+        },
+      ]),
+    );
+  }
   async ownPosts(page = 1) {
     const communities = new Set((await this.communities()).map((c) => c.id));
     const posts = (

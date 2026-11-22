@@ -45,6 +45,29 @@ test("shared likes and private bookmarks persist across independently constructe
   assert.equal((await alice.postInteractions(p.id)).count, 0);
   assert.deepEqual(await bob.savedPosts(), []);
 });
+test("feed interaction counts are real and viewer state survives service reconstruction", async () => {
+  const { repo, alice, bob } = await setup();
+  await bob.membership("events", true);
+  const post = await alice.createPost("events", "Existing text-only post");
+  await bob.createComment(post.id, "Visible comment");
+  await bob.interact(post.id, "like", true);
+  await bob.interact(post.id, "bookmark", true);
+  const fresh = new CityService(repo, { id: "bob", name: "Bob" });
+  assert.deepEqual((await fresh.postInteractionsBatch([post]))[post.id], {
+    likes: 1,
+    comments: 1,
+    liked: true,
+    bookmarked: true,
+  });
+  await bob.interact(post.id, "like", false);
+  await bob.interact(post.id, "bookmark", false);
+  assert.deepEqual((await fresh.postInteractionsBatch([post]))[post.id], {
+    likes: 0,
+    comments: 1,
+    liked: false,
+    bookmarked: false,
+  });
+});
 test("threaded replies validate post/parent/ownership and notify real recipients", async () => {
   const { alice, bob, repo } = await setup();
   await bob.membership("events", true);

@@ -146,9 +146,9 @@ test(
         .getByRole("button", { name: "В закладки", exact: true })
         .click();
       await alice.reload();
-      await expect(alice.locator(".beta-actions").first()).toContainText(
-        "Отметки нравится: 1",
-      );
+      await expect(
+        alice.locator(".app-post-actions button[aria-label='Нравится']"),
+      ).toContainText("1");
       await expect(
         alice.getByRole("button", { name: "Нравится", exact: true }),
       ).toBeVisible();
@@ -351,7 +351,7 @@ test("discovery and composer guide a new resident without demo content", async (
   await page.getByRole("button", { name: "Сбросить", exact: true }).click();
   await expect(page.locator("article").first()).toBeVisible();
   await expect(
-    page.locator('a[href="/communities/events"]').locator(".."),
+    page.locator('article a[href="/communities/events"]').locator(".."),
   ).toContainText("Вы участник");
   await page
     .getByRole("combobox", { name: "Категория", exact: true })

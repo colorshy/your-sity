@@ -1,8 +1,5 @@
 import { Thread } from "@/components/backend/thread";
-import {
-  PostInteractions,
-  AccountConnections,
-} from "@/components/backend/interactions";
+import { AccountConnections } from "@/components/backend/interactions";
 import { notFound } from "next/navigation";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { requireResident } from "@/lib/auth";
@@ -44,9 +41,6 @@ export default async function Page({
       <h1>{t("Талқылау", "Обсуждение")}</h1>
       <Notice {...query} />
       <PostList posts={[post]} authors={authors} />
-      {post.status === "published" && (
-        <PostInteractions service={service} postId={post.id} />
-      )}
       <AccountConnections service={service} targetId={post.author_id} />
       {post.status !== "published" && (
         <p role="status">

@@ -1,21 +1,36 @@
 import Link from "next/link";
 import { translator } from "@/lib/locale";
 import { setLocale } from "@/app/actions";
+import { signOut } from "@/app/actions";
+import { appwriteConfig } from "@/lib/appwrite/config";
+import { requireService } from "@/lib/auth";
+import { AppNav } from "./app-nav";
 export async function Shell({ children }: { children: React.ReactNode }) {
   const { locale, t } = await translator();
+  const context = appwriteConfig() ? await requireService() : null;
+  const onboarded = context
+    ? (await context.service.profile())?.onboarded
+    : false;
+  const communities =
+    onboarded && context ? await context.service.communities() : [];
+  const joined =
+    onboarded && context
+      ? new Set(
+          (await context.service.memberships()).map((m) => m.community_id),
+        )
+      : new Set<string>();
   return (
-    <>
-      <header className="topbar">
+    <div className="app-layout" lang={locale}>
+      <aside className="app-left">
         <Link className="brand" href="/">
           your city.
         </Link>
-        <nav className="header-actions">
-          <Link href="/discover">{t("Қаланы ашу", "Открыть город")}</Link>
-          <Link href="/feed">{t("Лента", "Лента")}</Link>
-          <Link href="/communities">{t("Қауымдар", "Сообщества")}</Link>
-          <Link href="/saved">{t("Сақталғандар", "Закладки")}</Link>
-          <Link href="/notifications">{t("Хабарламалар", "Уведомления")}</Link>
-          <Link href="/profile">{t("Профиль", "Профиль")}</Link>
+        <AppNav locale={locale} moderator={context?.service.isModerator()} />
+        <Link className="app-create" href="/create">
+          {t("Жазба жасау", "Создать публикацию")}
+        </Link>
+        <div className="app-account">
+          <span>{context?.user.name}</span>
           <form action={setLocale}>
             <input
               type="hidden"
@@ -24,10 +39,47 @@ export async function Shell({ children }: { children: React.ReactNode }) {
             />
             <button className="join">{locale === "kk" ? "РУС" : "ҚАЗ"}</button>
           </form>
-        </nav>
-      </header>
-      <main lang={locale}>{children}</main>
-    </>
+          {context && (
+            <form action={signOut}>
+              <button>{t("Шығу", "Выйти")}</button>
+            </form>
+          )}
+        </div>
+      </aside>
+      <main className="app-center">{children}</main>
+      <aside className="app-right" aria-label={t("Қала туралы", "О городе")}>
+        <Link className="app-search" href="/discover">
+          {t("Қауымдастықтарды іздеу", "Поиск сообществ")} →
+        </Link>
+        <section>
+          <h2>{t("Менің қауымдастықтарым", "Мои сообщества")}</h2>
+          {communities
+            .filter((c) => joined.has(c.id))
+            .slice(0, 5)
+            .map((c) => (
+              <Link key={c.id} href={"/communities/" + c.id}>
+                {c[locale === "kk" ? "name_kk" : "name_ru"]}
+              </Link>
+            ))}
+          {!joined.size && <p>{t("Әзірге жоқ", "Пока нет")}</p>}
+        </section>
+        <section>
+          <h2>{t("Қаланы ашыңыз", "Откройте город")}</h2>
+          {communities
+            .filter((c) => !joined.has(c.id))
+            .slice(0, 4)
+            .map((c) => (
+              <Link key={c.id} href={"/communities/" + c.id}>
+                {c[locale === "kk" ? "name_kk" : "name_ru"]}
+              </Link>
+            ))}
+        </section>
+        <p>{t("Шымкент, Қазақстан", "Шымкент, Казахстан")}</p>
+      </aside>
+      <div className="app-bottom">
+        <AppNav locale={locale} moderator={false} />
+      </div>
+    </div>
   );
 }
 export async function Configuration() {

@@ -62,11 +62,12 @@ export function Composer({
       <textarea
         id="post-body"
         name="body"
+        placeholder={t("Шымкентте қандай жаңалық бар?", "Что нового в Шымкенте?")}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         required
         maxLength={5000}
-        rows={8}
+        rows={5}
         aria-describedby="post-counter post-guidance"
       />
       <p id="post-counter" className="field-hint">
