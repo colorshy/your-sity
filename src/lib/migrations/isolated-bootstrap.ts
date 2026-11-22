@@ -2,6 +2,7 @@ import { inspectSchema, tables, type TableMetadata } from "../appwrite/schema";
 import { safeTablePolicy } from "../appwrite/policy";
 import type { Table } from "../appwrite/types";
 import { mediaBucket, maxImageBytes } from "../appwrite/media-limits";
+import { isolatedProjectId } from "../appwrite/config";
 import {
   mvp5Columns,
   mvp5Indexes,
@@ -29,7 +30,7 @@ const index = (
   attributes: string[],
   type: "key" | "unique" = "key",
 ) => ({ key, type, attributes });
-export const isolatedProject = "your-city-mvp51-lab";
+export const isolatedProject = isolatedProjectId;
 export const isolatedDatabase = "your_city_db";
 export function allowedIsolatedEndpoint(endpoint: string, selfHosted: boolean) {
   if (endpoint === "https://fra.cloud.appwrite.io/v1") return true;

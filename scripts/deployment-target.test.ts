@@ -88,7 +88,7 @@ test("isolated branch credentials cannot share a Production target", () => {
 test("deployment requires decrypted isolated identity without exposing the key", () => {
   const values: Record<string, string> = {
     APPWRITE_TARGET: "isolated",
-    APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
+    APPWRITE_PROJECT_ID: "6ab4b121002386b3d769",
     APPWRITE_DATABASE_ID: "your_city_db",
     APPWRITE_ENDPOINT: "https://fra.cloud.appwrite.io/v1",
     APPWRITE_API_KEY: "synthetic-only",
@@ -100,7 +100,15 @@ test("deployment requires decrypted isolated identity without exposing the key",
       verifyIsolatedPreviewValues(
         envs.map((e) =>
           e.key === key
-            ? { ...e, value: key === "APPWRITE_API_KEY" ? "" : "wrong" }
+            ? {
+                ...e,
+                value:
+                  key === "APPWRITE_API_KEY"
+                    ? ""
+                    : key === "APPWRITE_PROJECT_ID"
+                      ? "your-city-mvp51-lab"
+                      : "wrong",
+              }
             : e,
         ),
       ),

@@ -1,3 +1,4 @@
+import { isolatedProjectId } from "@/lib/appwrite/config";
 export const deploymentTarget = {
   projectId: "prj_I9ANo3tGUECTuC53MeDAmURntFIh",
   projectName: "your-city",
@@ -21,7 +22,7 @@ export type EnvironmentMetadata = {
 export function verifyIsolatedPreviewValues(envs: EnvironmentMetadata[]) {
   const expected = {
     APPWRITE_TARGET: "isolated",
-    APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
+    APPWRITE_PROJECT_ID: isolatedProjectId,
     APPWRITE_DATABASE_ID: "your_city_db",
     APPWRITE_ENDPOINT: "https://fra.cloud.appwrite.io/v1",
   };

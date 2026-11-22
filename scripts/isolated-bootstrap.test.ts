@@ -65,7 +65,7 @@ test("empty isolated project plans database, 13 tables, bucket and deterministic
   assert.ok(operations.includes("create-bucket:" + mediaBucket));
   assert.deepEqual(planIsolatedBootstrap(complete()), []);
   assert.equal(Object.keys(fields).length, 13);
-  assert.equal(isolatedProject, "your-city-mvp51-lab");
+  assert.equal(isolatedProject, "6ab4b121002386b3d769");
 });
 test("partial bootstrap resumes and never rewrites existing rows", () => {
   const snapshot = complete();
@@ -107,27 +107,29 @@ test("only pinned cloud or explicit loopback self-hosted endpoint is allowed", (
   ])
     assert.equal(allowedIsolatedEndpoint(endpoint, false), false);
 });
-test("bootstrap CLI refuses shared project before any provider request", () => {
-  const run = spawnSync(
-    process.execPath,
-    [
-      "--import",
-      "tsx",
-      "scripts/isolated-bootstrap.ts",
-      "--apply",
-      "--isolated",
-    ],
-    {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        APPWRITE_MIGRATION_PROJECT_ID: "your-city",
-        APPWRITE_MIGRATION_API_KEY: "synthetic-only",
+test("bootstrap CLI refuses shared and obsolete projects before any provider request", () => {
+  for (const project of ["your-city", "your-city-mvp51-lab"]) {
+    const run = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "scripts/isolated-bootstrap.ts",
+        "--apply",
+        "--isolated",
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          APPWRITE_MIGRATION_PROJECT_ID: project,
+          APPWRITE_MIGRATION_API_KEY: "synthetic-only",
+        },
       },
-    },
-  );
-  assert.equal(run.status, 2);
-  assert.match(run.stderr, /blocked-or-failed/);
-  assert.doesNotMatch(run.stderr, /synthetic-only/);
+    );
+    assert.equal(run.status, 2);
+    assert.match(run.stderr, /blocked-or-failed/);
+    assert.doesNotMatch(run.stderr, /synthetic-only/);
+  }
 });

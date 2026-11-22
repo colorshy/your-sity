@@ -1,4 +1,4 @@
-export const isolatedProjectId = "your-city-mvp51-lab";
+export const isolatedProjectId = "6ab4b121002386b3d769";
 export const previewBranch = "feat/mvp-5-social-feed";
 export function validAppwriteTarget(env: Record<string, string | undefined>) {
   const project = env.APPWRITE_PROJECT_ID || "your-city";

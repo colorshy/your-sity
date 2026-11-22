@@ -279,12 +279,12 @@ test("isolated Appwrite credentials require explicit target and protected Previe
   const { resolveAppwriteConfig } = await import("../src/lib/appwrite/config");
   const isolated = {
     APPWRITE_API_KEY: "synthetic-only",
-    APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
+    APPWRITE_PROJECT_ID: "6ab4b121002386b3d769",
     APPWRITE_TARGET: "isolated",
   };
   assert.equal(
     resolveAppwriteConfig({ ...isolated, NODE_ENV: "test" })?.project,
-    "your-city-mvp51-lab",
+    "6ab4b121002386b3d769",
   );
   const preview = {
     ...isolated,
@@ -293,7 +293,7 @@ test("isolated Appwrite credentials require explicit target and protected Previe
     VERCEL_ENV: "preview",
     VERCEL_GIT_COMMIT_REF: "feat/mvp-5-social-feed",
   };
-  assert.equal(resolveAppwriteConfig(preview)?.project, "your-city-mvp51-lab");
+  assert.equal(resolveAppwriteConfig(preview)?.project, "6ab4b121002386b3d769");
   for (const invalid of [
     { VERCEL_ENV: "production" },
     { VERCEL_GIT_COMMIT_REF: "main" },
@@ -306,6 +306,13 @@ test("isolated Appwrite credentials require explicit target and protected Previe
     resolveAppwriteConfig({
       ...isolated,
       APPWRITE_PROJECT_ID: "arbitrary-lab",
+      NODE_ENV: "test",
+    }),
+  );
+  assert.throws(() =>
+    resolveAppwriteConfig({
+      ...isolated,
+      APPWRITE_PROJECT_ID: "your-city-mvp51-lab",
       NODE_ENV: "test",
     }),
   );
